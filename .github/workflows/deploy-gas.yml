@@ -1,0 +1,58 @@
+name: Deploy GAS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'gas/**'
+      - 'lib/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-gas.yml'
+
+concurrency:
+  group: chatcst-gas-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Validate deployment secrets
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
+        run: |
+          test -n "$CLASPRC_JSON"
+          test -n "$GAS_SCRIPT_ID"
+          test -n "$GAS_DEPLOYMENT_ID"
+      - name: Configure clasp
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        run: |
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          printf '{"scriptId":"%s","rootDir":"gas"}\n' "$GAS_SCRIPT_ID" > .clasp.json
+      - name: Push and update existing deployment
+        env:
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
+        run: |
+          npx --yes @google/clasp@3.3.0 push --force
+          npx --yes @google/clasp@3.3.0 deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA}"
