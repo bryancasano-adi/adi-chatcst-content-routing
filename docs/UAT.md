@@ -14,8 +14,10 @@ Use a Workspace-restricted test deployment and approved Workspace accounts.
 - Simulate Drive success/Sheet failure and reverse; confirm PARTIAL and retry skips the completed side.
 - Employee corrects own record; another employee cannot. Manager can inspect/correct broader records.
 - Metadata-only correction increments version. Route-changing correction verifies new targets, moves by file ID, updates Data Summary, and audits before/after.
+- Employee deletes an owned submission; another employee cannot. Confirm the Data Summary row is removed, files are in Drive Trash, file rows are inactive, the registry status is `DELETED`, and the audit record remains.
 - Jira issue reference accepts an issue key and traces ticket → submission → answers → route → Data Summary → files → audit.
 - Admin dashboard totals are correct; secrets/resource IDs are not exposed to ordinary users.
+- Admin Health, Configuration, Audit Log, and ACL Preview render as read-only visual views rather than raw JSON.
 - An ordinary correction response exposes opaque file tokens but no target spreadsheet ID, folder ID, or technical error detail.
 - Health check detects missing Sheet/tab/folder, malformed/duplicate routes, orphan ACL mappings, and invalid permissions without mutation.
 - ACL preview has no side effects; sync adds viewer, changes role, conservatively protects obsolete/protected grants, and is idempotent.

@@ -61,6 +61,7 @@ describe('Apps Script project contract', () => {
     expect(idempotency).toContain('LockService.getScriptLock()');
     expect(routing).not.toContain('getFolderByName');
     expect(html).not.toContain('Preview as');
+    expect(code).toContain('function deleteSubmission(submissionId)');
     const forbiddenRuntimeModes = [
       ['sam', 'ple'].join(''),
       ['develop', 'ment'].join(''),
@@ -88,6 +89,10 @@ describe('Apps Script project contract', () => {
       new URL('gas/AccessControlService.gs', root),
       'utf8',
     );
+    const drive = await readFile(
+      new URL('gas/DriveRepository.gs', root),
+      'utf8',
+    );
 
     expect(setup).toContain('MetadataFields');
     expect(config).toContain("readTable('MetadataFields')");
@@ -97,6 +102,10 @@ describe('Apps Script project contract', () => {
     expect(submissions).toContain('delete visibleRecord.target_folder_id');
     expect(acl).toContain('Session.getEffectiveUser().getEmail()');
     expect(acl).toContain("['ADMIN','CONTENT_MANAGER']");
+    expect(submissions).toContain("processing_status='DELETED'");
+    expect(submissions).toContain("'SUBMISSION_DELETED'");
+    expect(drive).toContain('setTrashed(true)');
+    expect(drive).toContain("'FILE_TRASHED'");
   });
 
   it('keeps the React and Apps Script surfaces on the same UI contract', async () => {
@@ -144,13 +153,13 @@ describe('Apps Script project contract', () => {
     });
 
     const sharedCopy = [
-      'Content intake and governance',
-      'Route content to ChatCST',
-      'Submission context',
-      'Document metadata',
-      'Vetting questions',
-      'Supporting attachments',
-      'Review and submit',
+      'Content Intake &',
+      'Route Content to ChatCST',
+      'Submission Context',
+      'Document Metadata',
+      'Vetting Questions',
+      'Supporting Attachments',
+      'Review and Submit',
     ];
     sharedCopy.forEach((text) => {
       expect(`${reactShell}\n${reactIntake}`).toContain(text);
@@ -159,5 +168,9 @@ describe('Apps Script project contract', () => {
 
     expect(reactStyles).toContain('--brand: #a43b31');
     expect(gasStyles).toContain('--brand: #a43b31');
+    expect(gasIndex).not.toContain('aclSyncButton');
+    expect(gasClient).not.toContain('JSON.stringify(await run');
+    expect(gasClient).toContain('formatConditions(route.conditions)');
+    expect(gasClient).not.toContain('esc(route.conditions)');
   });
 });

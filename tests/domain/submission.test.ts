@@ -101,4 +101,38 @@ describe('submission workflow', () => {
       ),
     ).toThrow('AUTH_DENIED');
   });
+  it('soft-deletes owned content and preserves an audit record', () => {
+    const first = localSubmissionService.submit(
+      input(),
+      'content.employee@aboitiz.com',
+    );
+    const deleted = localSubmissionService.delete(
+      first.submissionId,
+      'content.employee@aboitiz.com',
+    );
+
+    expect(deleted.processingStatus).toBe('DELETED');
+    expect(deleted.attachments).toEqual([]);
+    expect(
+      localSubmissionService
+        .audits()
+        .some(
+          (event) =>
+            event.submissionId === first.submissionId &&
+            event.eventType === 'SUBMISSION_DELETED',
+        ),
+    ).toBe(true);
+  });
+  it('prevents another employee from deleting the record', () => {
+    const first = localSubmissionService.submit(
+      input(),
+      'content.employee@aboitiz.com',
+    );
+    expect(() =>
+      localSubmissionService.delete(
+        first.submissionId,
+        'finance.viewer@aboitiz.com',
+      ),
+    ).toThrow('AUTH_DENIED');
+  });
 });

@@ -18,7 +18,8 @@ export type ProcessingStatus =
   | 'FAILED'
   | 'PARTIAL'
   | 'REQUIRES_REVIEW'
-  | 'CORRECTION_IN_PROGRESS';
+  | 'CORRECTION_IN_PROGRESS'
+  | 'DELETED';
 export type OperationStatus = 'PENDING' | 'SAVED' | 'FAILED' | 'NOT_REQUIRED';
 export type ErrorCode =
   | 'AUTH_DENIED'
@@ -32,6 +33,7 @@ export type ErrorCode =
   | 'SHEET_WRITE_FAILED'
   | 'DUPLICATE_SUBMISSION'
   | 'ACL_SYNC_FAILED'
+  | 'SUBMISSION_DELETE_FAILED'
   | 'CONFIGURATION_ERROR'
   | 'UNKNOWN_ERROR';
 

@@ -31,19 +31,72 @@
       return node.innerHTML;
     }
 
+    function titleCaseKey(value) {
+      return String(value || '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, function (character) {
+          return character.toUpperCase();
+        });
+    }
+
+    function formatConditions(value) {
+      var conditions = value;
+      if (typeof conditions === 'string') {
+        try {
+          conditions = JSON.parse(conditions);
+        } catch (error) {
+          return 'Invalid Governed Rule';
+        }
+      }
+      if (!Array.isArray(conditions) || !conditions.length) {
+        return 'No Conditions';
+      }
+      return conditions
+        .map(function (condition) {
+          var label = titleCaseKey(condition.key);
+          if (condition.equals !== undefined) {
+            return label + ' is ' + condition.equals;
+          }
+          if (Array.isArray(condition.in)) {
+            return label + ' is one of ' + condition.in.join(', ');
+          }
+          return label;
+        })
+        .join(' · ');
+    }
+
     function run(name, args) {
       return new Promise(function (resolve, reject) {
         var runner = google.script.run
           .withSuccessHandler(resolve)
           .withFailureHandler(function (error) {
-            try {
-              reject(JSON.parse(error.message));
-            } catch (parseError) {
-              reject({ message: error.message || 'Request failed' });
-            }
+            reject(normalizeClientError(error));
           });
         runner[name].apply(runner, args || []);
       });
+    }
+
+    function normalizeClientError(error) {
+      var raw = String((error && error.message) || error || 'Request failed');
+      var start = raw.indexOf('{');
+      var end = raw.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        try {
+          var parsed = JSON.parse(raw.slice(start, end + 1));
+          return {
+            code: parsed.code || 'UNKNOWN_ERROR',
+            message: parsed.message || 'The request could not be completed.',
+            submissionId: parsed.submissionId || '',
+          };
+        } catch (parseError) {
+          // Fall through to the safe plain-text response.
+        }
+      }
+      return {
+        code: 'UNKNOWN_ERROR',
+        message: raw.replace(/^(Exception:\s*)?(Error:\s*)?/, ''),
+        submissionId: '',
+      };
     }
 
     el('userName').textContent = user.name;
@@ -80,6 +133,7 @@
       el('intakeForm').hidden = false;
       el('steps').hidden = false;
       el('success').hidden = true;
+      hideRecovery();
       showError('');
       render();
     }
@@ -192,8 +246,8 @@
     function render() {
       renderSteps();
       el('intakeTitle').textContent = state.editingId
-        ? 'Correct ' + state.editingId
-        : 'Route content to ChatCST';
+        ? 'Update ' + state.editingId
+        : 'Route Content to ChatCST';
       el('intakeBadge').textContent = state.editingId
         ? 'Version ' + (state.editingVersion + 1)
         : 'Draft';
@@ -201,17 +255,16 @@
       var html = '';
       if (step === 1) {
         html =
-          '<h2>Submission context</h2>' +
+          '<h2>Submission Context</h2>' +
           '<p class="muted">Your Workspace identity is verified again by the production server.</p>' +
-          '<div class="contextGrid"><div><span>Submitting as</span><strong>' +
+          '<div class="contextGrid"><div><span>Submitting As</span><strong>' +
           esc(user.email) +
-          '</strong></div><div><span>Access</span><strong>Workspace identity verified</strong></div></div>' +
-          '<div class="callout">Destinations are derived from validated answers. Folder IDs and Sheet tabs can never be selected in the browser.</div>';
+          '</strong></div><div><span>Access</span><strong>Workspace identity verified</strong></div></div>';
       }
 
       if (step === 2) {
         html =
-          '<h2>Document metadata</h2>' +
+          '<h2>Document Metadata</h2>' +
           '<p class="muted">Fields marked * are required.</p>' +
           '<div class="grid">' +
           config.metadataFields
@@ -224,7 +277,7 @@
 
       if (step === 3) {
         html =
-          '<h2>Vetting questions</h2>' +
+          '<h2>Vetting Questions</h2>' +
           '<p class="muted">Answers drive deterministic routing to governed destinations.</p>' +
           '<div class="questions">' +
           visibleQuestions_()
@@ -259,7 +312,7 @@
             return (
               '<div><span><b>' +
               esc(file.name) +
-              '</b><small>' +
+              '</b> · <small>' +
               (file.size / 1024).toFixed(1) +
               ' KB</small></span><button type="button" data-remove="' +
               index +
@@ -268,7 +321,7 @@
           })
           .join('');
         html =
-          '<h2>Supporting attachments</h2>' +
+          '<h2>Supporting Attachments</h2>' +
           '<p class="muted">' +
           esc(config.filePolicy.allowedExtensions.map(function (extension) { return extension.toUpperCase(); }).join(', ')) +
           ' · up to ' +
@@ -278,7 +331,7 @@
           ' files.</p>' +
           '<label class="dropzone"><input id="fileInput" type="file" multiple accept=".' +
           config.filePolicy.allowedExtensions.join(',.') +
-          '"><b>Choose files</b><span>or drag them here</span></label>' +
+          '"><b>Choose Files</b><span>or drag them here</span></label>' +
           (state.errors.attachments
             ? '<p class="error">' + esc(state.errors.attachments) + '</p>'
             : '') +
@@ -290,7 +343,7 @@
 
       if (step === 5) {
         html =
-          '<h2>Review and submit</h2>' +
+          '<h2>Review and Submit</h2>' +
           '<p class="muted">Confirm these details before creating the auditable record.</p>' +
           '<div class="review"><div><h3>Metadata</h3>' +
           config.metadataFields
@@ -324,7 +377,7 @@
             .join('') +
           '</div><div><h3>Attachments</h3><p><span>Files</span><b>' +
           (activeFileCount_() || 'None') +
-          '</b></p></div><div class="routePreview"><h3>Resolved route</h3><strong>Resolved on submission</strong><span>The server applies the active governed route.</span></div></div>';
+          '</b></p></div><div class="routePreview"><h3>Resolved Route</h3><strong>Resolved on Submission</strong><span>The server applies the active governed route.</span></div></div>';
       }
 
       el('stepPanel').innerHTML = html;
@@ -332,13 +385,14 @@
       el('next').hidden = step === 5;
       el('submit').hidden = step !== 5;
       el('submit').textContent = state.editingId
-        ? 'Submit correction'
-        : 'Submit content';
+        ? 'Submit Update'
+        : 'Submit Content';
 
       document.querySelectorAll('[data-prefix]').forEach(function (node) {
         node.oninput = node.onchange = function () {
           state[node.dataset.prefix][node.dataset.key] = node.value;
           delete state.errors[node.dataset.prefix + '.' + node.dataset.key];
+          hideRecovery();
           showError('');
         };
       });
@@ -440,6 +494,57 @@
       el('formError').textContent = message || '';
     }
 
+    function hideRecovery() {
+      el('submissionRecovery').hidden = true;
+      el('submissionRecovery').innerHTML = '';
+    }
+
+    function showRecovery(error) {
+      var panel = el('submissionRecovery');
+      var isRoutingIssue = error.code === 'ROUTE_NOT_FOUND';
+      panel.hidden = false;
+      panel.innerHTML =
+        '<div><h3>Submission Needs Attention</h3><p>' +
+        esc(error.message || 'The submission could not be completed.') +
+        '</p>' +
+        (error.submissionId
+          ? '<small>Submission Reference: ' + esc(error.submissionId) + '</small>'
+          : '') +
+        '</div><div class="recoveryActions">' +
+        (isRoutingIssue
+          ? '<button type="button" id="updateHeldSubmission">Update Answers</button>'
+          : !error.submissionId
+            ? '<button type="button" id="dismissSubmissionError">Try Again</button>'
+            : '') +
+        (error.submissionId
+          ? '<button type="button" class="primary" id="viewHeldSubmission">View Submissions</button>'
+          : '') +
+        '</div>';
+
+      if (isRoutingIssue) {
+        el('updateHeldSubmission').onclick = function () {
+          if (error.submissionId) beginCorrection(error.submissionId, 3);
+          else {
+            step = 3;
+            hideRecovery();
+            el('submit').disabled = false;
+            render();
+          }
+        };
+      }
+      if (!isRoutingIssue && !error.submissionId) {
+        el('dismissSubmissionError').onclick = function () {
+          hideRecovery();
+          el('submit').disabled = false;
+        };
+      }
+      if (error.submissionId) {
+        el('viewHeldSubmission').onclick = function () {
+          showPage('submissions', false);
+        };
+      }
+    }
+
     el('next').onclick = function () {
       if (!validateCurrent()) return;
       step = Math.min(labels.length, step + 1);
@@ -487,6 +592,7 @@
       var button = el('submit');
       button.disabled = true;
       button.textContent = 'Submitting…';
+      hideRecovery();
       showError('');
 
       try {
@@ -509,28 +615,25 @@
         el('success').hidden = false;
         el('success').innerHTML =
           '<div class="successIcon">✓</div><h2>' +
-          (state.editingId ? 'Correction complete' : 'Submission complete') +
+          (state.editingId ? 'Update Complete' : 'Submission Complete') +
           '</h2><p>Your content was validated, routed, and recorded.</p>' +
-          '<div class="receipt"><span>Submission reference</span><strong>' +
+          '<div class="receipt"><span>Submission Reference</span><strong>' +
           esc(result.submissionId) +
           '</strong><span>Destination</span><b>' +
           esc(result.targetSheetTab) +
           '</b><span>Status</span><b class="status completed">' +
           esc(result.processingStatus) +
-          '</b></div><button type="button" class="primary" id="viewSubmissions">View submissions</button>';
+          '</b></div><button type="button" class="primary" id="viewSubmissions">View Submissions</button>';
         el('viewSubmissions').onclick = function () {
           showPage('submissions', false);
         };
       } catch (error) {
-        showError(
-          (error.message || 'Submission failed') +
-            (error.submissionId ? ' Reference: ' + error.submissionId : ''),
-        );
+        showRecovery(error);
       } finally {
-        button.disabled = false;
+        button.disabled = !el('submissionRecovery').hidden;
         button.textContent = state.editingId
-          ? 'Submit correction'
-          : 'Submit content';
+          ? 'Submit Update'
+          : 'Submit Content';
       }
     };
 
@@ -542,6 +645,14 @@
         var rows = await run('listSubmissions');
         el('submissionRows').innerHTML = rows
           .map(function (record) {
+            var actions =
+              record.processingStatus === 'DELETED'
+                ? '<span class="muted">No Actions</span>'
+                : '<div class="rowActions"><button type="button" data-edit="' +
+                  esc(record.submissionId) +
+                  '">Update</button><button type="button" class="dangerButton" data-delete="' +
+                  esc(record.submissionId) +
+                  '">Delete</button></div>';
             return (
               '<tr><td><b>' +
               esc(record.submissionId) +
@@ -559,9 +670,9 @@
               esc(record.processingStatus) +
               '</span></td><td>' +
               esc(String(record.updatedAt).slice(0, 10)) +
-              '</td><td><button type="button" data-edit="' +
-              esc(record.submissionId) +
-              '">Correct</button></td></tr>'
+              '</td><td>' +
+              actions +
+              '</td></tr>'
             );
           })
           .join('');
@@ -572,13 +683,36 @@
             beginCorrection(button.dataset.edit);
           };
         });
+        document.querySelectorAll('[data-delete]').forEach(function (button) {
+          button.onclick = function () {
+            deleteSubmission_(button.dataset.delete);
+          };
+        });
       } catch (error) {
         el('submissionRows').innerHTML =
           '<tr><td colspan="7">' + esc(error.message) + '</td></tr>';
       }
     }
 
-    async function beginCorrection(id) {
+    async function deleteSubmission_(id) {
+      if (
+        !window.confirm(
+          'Delete ' +
+            id +
+            '? Routed data will be removed and files will be moved to Trash. The audit record will be retained.',
+        )
+      ) {
+        return;
+      }
+      try {
+        await run('deleteSubmission', [id]);
+        await loadSubmissions();
+      } catch (error) {
+        window.alert(error.message || 'The submission could not be deleted.');
+      }
+    }
+
+    async function beginCorrection(id, startStep) {
       try {
         var data = await run('getSubmission', [id]);
         state = {
@@ -597,14 +731,15 @@
           state.answers[answer.question_key] = answer.answer;
         });
         state.answers.change_type = 'Correction';
-        step = 1;
+        step = startStep || 1;
         el('intakeForm').hidden = false;
         el('steps').hidden = false;
         el('success').hidden = true;
+        hideRecovery();
         showPage('intake', true);
         render();
       } catch (error) {
-        window.alert(error.message || 'Unable to open correction.');
+        window.alert(error.message || 'Unable to open the submission update.');
       }
     }
 
@@ -619,13 +754,13 @@
           return String(route.active).toLowerCase() === 'true';
         }).length;
         var metrics = [
-          ['Total submissions', counts.total],
+          ['Total Submissions', counts.total],
           ['Completed', counts.completed],
           [
-            'Needs attention',
+            'Needs Attention',
             counts.failed + counts.partial + counts.requiresReview,
           ],
-          ['Active routes', activeRoutes],
+          ['Active Routes', activeRoutes],
         ];
         el('metrics').innerHTML = metrics
           .map(function (metric) {
@@ -638,52 +773,209 @@
             );
           })
           .join('');
+        setActiveAdminView('configButton');
+        renderConfiguration(results[1]);
       } catch (error) {
         el('adminOutput').textContent = error.message;
       }
     }
 
-    function showAdminCall(buttonId, method, progress) {
-      el(buttonId).onclick = async function () {
-        el('adminOutput').textContent = progress;
-        try {
-          el('adminOutput').textContent = JSON.stringify(
-            await run(method),
-            null,
-            2,
+    function setActiveAdminView(buttonId) {
+      document.querySelectorAll('.adminButtons button').forEach(function (button) {
+        button.classList.toggle('active', button.id === buttonId);
+        button.setAttribute('aria-selected', button.id === buttonId ? 'true' : 'false');
+      });
+    }
+
+    function showAdminLoading(buttonId, message) {
+      setActiveAdminView(buttonId);
+      el('adminOutput').innerHTML =
+        '<div class="emptyState"><strong>' +
+        esc(message) +
+        '</strong><span>Please wait.</span></div>';
+    }
+
+    function showAdminError(error) {
+      el('adminOutput').innerHTML =
+        '<div class="errorBox"><strong>Unable to Load View</strong><br>' +
+        esc(error.message || 'The administrative view could not be loaded.') +
+        '</div>';
+    }
+
+    function renderHealth(report) {
+      el('adminOutput').innerHTML =
+        '<div class="sectionHeading"><div><h3>Environment Health</h3><p>Checked ' +
+        esc(String(report.checkedAt || '').replace('T', ' ').slice(0, 19)) +
+        '</p></div><span class="status ' +
+        (report.valid ? 'completed' : 'failed') +
+        '">' +
+        (report.valid ? 'HEALTHY' : 'NEEDS ATTENTION') +
+        '</span></div><div class="checkList">' +
+        (report.checks || [])
+          .map(function (check) {
+            return (
+              '<div><span class="checkIcon ' +
+              (check.ok ? 'ok' : '') +
+              '">' +
+              (check.ok ? '✓' : '!') +
+              '</span><span><strong>' +
+              esc(check.name) +
+              '</strong><small>' +
+              esc(check.ok ? 'Check passed.' : check.message || check.code) +
+              '</small></span><b>' +
+              (check.ok ? 'Passed' : 'Needs Attention') +
+              '</b></div>'
+            );
+          })
+          .join('') +
+        '</div>';
+    }
+
+    function renderConfiguration(data) {
+      var activeRoutes = (data.routes || []).filter(function (route) {
+        return String(route.active).toLowerCase() === 'true';
+      }).length;
+      el('adminOutput').innerHTML =
+        '<div class="sectionHeading"><div><h3>Governed Configuration</h3><p>' +
+        (data.questions || []).length +
+        ' Vetting Questions · ' +
+        (data.roles || []).length +
+        ' Roles · ' +
+        activeRoutes +
+        ' Active Routes</p></div></div>' +
+        '<div class="adminTableWrap"><table><thead><tr><th>Route</th><th>Destination</th><th>Conditions</th><th>Version</th><th>Status</th></tr></thead><tbody>' +
+        (data.routes || [])
+          .map(function (route) {
+            return (
+              '<tr><td><b>' +
+              esc(route.routeKey) +
+              '</b></td><td>' +
+              esc(route.dataSummaryTab) +
+              '</td><td><code>' +
+              esc(formatConditions(route.conditions)) +
+              '</code></td><td>v' +
+              esc(route.version) +
+              '</td><td><span class="status ' +
+              (String(route.active).toLowerCase() === 'true' ? 'completed' : '') +
+              '">' +
+              (String(route.active).toLowerCase() === 'true' ? 'ACTIVE' : 'INACTIVE') +
+              '</span></td></tr>'
+            );
+          })
+          .join('') +
+        '</tbody></table></div>';
+    }
+
+    function renderAudit(events) {
+      var rows = events || [];
+      el('adminOutput').innerHTML =
+        '<div class="sectionHeading"><div><h3>Recent Audit Activity</h3><p>Immutable workflow events, newest first.</p></div><span class="countBadge">' +
+        rows.length +
+        ' Events</span></div>' +
+        (rows.length
+          ? '<div class="adminTableWrap"><table><thead><tr><th>Event</th><th>Submission</th><th>Actor</th><th>Result</th><th>Occurred</th></tr></thead><tbody>' +
+            rows
+              .map(function (event) {
+                return (
+                  '<tr><td><b>' +
+                  esc(String(event.event_type || '').replace(/_/g, ' ')) +
+                  '</b></td><td>' +
+                  esc(event.submission_id || 'System') +
+                  '</td><td>' +
+                  esc(event.actor_email) +
+                  '</td><td><span class="status ' +
+                  (event.result === 'SUCCESS' ? 'completed' : 'failed') +
+                  '">' +
+                  esc(event.result) +
+                  '</span></td><td>' +
+                  esc(String(event.occurred_at || '').replace('T', ' ').slice(0, 19)) +
+                  '</td></tr>'
+                );
+              })
+              .join('') +
+            '</tbody></table></div>'
+          : '<div class="emptyState"><strong>No Audit Events</strong><span>Workflow activity will appear here.</span></div>');
+    }
+
+    function renderAcl(diff) {
+      var groups = [
+        ['Add', diff.add || []],
+        ['Change', diff.change || []],
+        ['Remove', diff.remove || []],
+        ['Protected', diff.protected || []],
+      ];
+      var details = groups
+        .filter(function (group) {
+          return group[1].length;
+        })
+        .map(function (group) {
+          return (
+            '<section class="aclGroup"><h4>' +
+            group[0] +
+            '</h4><div class="checkList">' +
+            group[1]
+              .map(function (grant) {
+                return (
+                  '<div><span class="checkIcon protected">●</span><span><strong>' +
+                  esc(grant.email) +
+                  '</strong><small>Folder: ' +
+                  esc(grant.folderId) +
+                  '</small></span><b>' +
+                  esc(grant.permission) +
+                  '</b></div>'
+                );
+              })
+              .join('') +
+            '</div></section>'
           );
-        } catch (error) {
-          el('adminOutput').textContent = error.message;
-        }
-      };
+        })
+        .join('');
+      el('adminOutput').innerHTML =
+        '<div class="sectionHeading"><div><h3>ACL Change Preview</h3><p>Read-only access reconciliation preview. No changes are applied.</p></div></div>' +
+        '<div class="aclSummary">' +
+        groups
+          .map(function (group) {
+            return '<div><span>' + group[0] + '</span><strong>' + group[1].length + '</strong></div>';
+          })
+          .join('') +
+        '</div>' +
+        (details ||
+          '<div class="emptyState"><strong>No ACL Changes</strong><span>Current permissions match the governed access matrix.</span></div>');
     }
 
-    showAdminCall('healthButton', 'validateEnvironment', 'Checking…');
-    showAdminCall(
-      'configButton',
-      'getAdminConfiguration',
-      'Loading governed configuration…',
-    );
-    showAdminCall('auditButton', 'listAuditEvents', 'Loading audit history…');
-    showAdminCall('aclButton', 'previewAclChanges', 'Reading permissions…');
-
-    el('aclSyncButton').onclick = async function () {
-      if (
-        !window.confirm(
-          'Apply the displayed ACL reconciliation? Protected identities will not be removed.',
-        )
-      ) {
-        return;
-      }
-      el('adminOutput').textContent = 'Synchronizing permissions…';
+    el('healthButton').onclick = async function () {
+      showAdminLoading('healthButton', 'Checking Environment Health');
       try {
-        el('adminOutput').textContent = JSON.stringify(
-          await run('syncDriveAcl'),
-          null,
-          2,
-        );
+        renderHealth(await run('validateEnvironment'));
       } catch (error) {
-        el('adminOutput').textContent = error.message;
+        showAdminError(error);
+      }
+    };
+
+    el('configButton').onclick = async function () {
+      showAdminLoading('configButton', 'Loading Governed Configuration');
+      try {
+        renderConfiguration(await run('getAdminConfiguration'));
+      } catch (error) {
+        showAdminError(error);
+      }
+    };
+
+    el('auditButton').onclick = async function () {
+      showAdminLoading('auditButton', 'Loading Audit Activity');
+      try {
+        renderAudit(await run('listAuditEvents'));
+      } catch (error) {
+        showAdminError(error);
+      }
+    };
+
+    el('aclButton').onclick = async function () {
+      showAdminLoading('aclButton', 'Building ACL Preview');
+      try {
+        renderAcl(await run('previewAclChanges'));
+      } catch (error) {
+        showAdminError(error);
       }
     };
 

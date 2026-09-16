@@ -34,6 +34,15 @@ interface ReviewProps {
   metadata: Record<string, string>;
 }
 
+interface SubmissionIssue {
+  code: string;
+  message: string;
+  submissionId?: string;
+}
+
+const ROUTE_NOT_FOUND_MESSAGE =
+  'No approved destination matches this submission. It has been held for review.';
+
 const EMPTY_METADATA = Object.fromEntries(
   metadataFields.map((field) => [field.key, '']),
 );
@@ -64,6 +73,8 @@ export function IntakePage({
   const [formMessage, setFormMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<SubmissionRecord | null>(null);
+  const [submissionIssue, setSubmissionIssue] =
+    useState<SubmissionIssue | null>(null);
 
   const visibleQuestions = useMemo(
     () =>
@@ -94,6 +105,7 @@ export function IntakePage({
       return next;
     });
     setFormMessage('');
+    setSubmissionIssue(null);
   }
 
   function validateCurrentStep() {
@@ -125,12 +137,14 @@ export function IntakePage({
     if (!validateCurrentStep()) return;
     setErrors({});
     setFormMessage('');
+    setSubmissionIssue(null);
     setStep((current) => Math.min(5, current + 1));
   }
 
   function goBack() {
     setErrors({});
     setFormMessage('');
+    setSubmissionIssue(null);
     setStep((current) => Math.max(1, current - 1));
   }
 
@@ -180,6 +194,7 @@ export function IntakePage({
 
     setBusy(true);
     setFormMessage('');
+    setSubmissionIssue(null);
     try {
       const input: SubmissionInput = {
         idempotencyToken: crypto.randomUUID(),
@@ -197,11 +212,7 @@ export function IntakePage({
         : localSubmissionService.submit(input, userEmail);
       setReceipt(saved);
     } catch (error) {
-      setFormMessage(
-        error instanceof Error
-          ? error.message
-          : 'The submission could not be completed.',
-      );
+      setSubmissionIssue(toSubmissionIssue(error));
     } finally {
       setBusy(false);
     }
@@ -211,12 +222,10 @@ export function IntakePage({
     return (
       <section className="success" aria-live="polite">
         <div className="successIcon">✓</div>
-        <h1>
-          {initialSubmission ? 'Correction complete' : 'Submission complete'}
-        </h1>
+        <h1>{initialSubmission ? 'Update Complete' : 'Submission Complete'}</h1>
         <p>Your content was validated, routed, and recorded.</p>
         <div className="receipt">
-          <span>Submission reference</span>
+          <span>Submission Reference</span>
           <strong>{receipt.submissionId}</strong>
           <span>Destination</span>
           <b>{receipt.targetSheetTab}</b>
@@ -224,7 +233,7 @@ export function IntakePage({
           <b className="status completed">COMPLETED</b>
         </div>
         <button type="button" className="primary" onClick={onSaved}>
-          View submissions
+          View Submissions
         </button>
       </section>
     );
@@ -237,8 +246,8 @@ export function IntakePage({
           <p className="eyebrow">CONTENT ROUTING WORKFLOW</p>
           <h1>
             {initialSubmission
-              ? `Correct ${initialSubmission.submissionId}`
-              : 'Route content to ChatCST'}
+              ? `Update ${initialSubmission.submissionId}`
+              : 'Route Content to ChatCST'}
           </h1>
           <p>
             Provide complete metadata and supporting files. You remain
@@ -289,6 +298,38 @@ export function IntakePage({
           </div>
         )}
 
+        {submissionIssue && (
+          <div className="recoveryPanel" role="alert">
+            <div>
+              <h3>Submission Needs Attention</h3>
+              <p>{submissionIssue.message}</p>
+              {submissionIssue.submissionId && (
+                <small>
+                  Submission Reference: {submissionIssue.submissionId}
+                </small>
+              )}
+            </div>
+            <div className="recoveryActions">
+              {submissionIssue.code === 'ROUTE_NOT_FOUND' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmissionIssue(null);
+                    setStep(3);
+                  }}
+                >
+                  Update Answers
+                </button>
+              )}
+              {submissionIssue.submissionId && (
+                <button type="button" className="primary" onClick={onSaved}>
+                  View Submissions
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <footer className="actions">
           <button type="button" disabled={step === 1} onClick={goBack}>
             Back
@@ -311,8 +352,8 @@ export function IntakePage({
               {busy
                 ? 'Submitting…'
                 : initialSubmission
-                  ? 'Submit correction'
-                  : 'Submit content'}
+                  ? 'Submit Update'
+                  : 'Submit Content'}
             </button>
           )}
         </footer>
@@ -324,23 +365,19 @@ export function IntakePage({
 function ContextStep({ userEmail }: { userEmail: string }) {
   return (
     <div>
-      <h2>Submission context</h2>
+      <h2>Submission Context</h2>
       <p className="muted">
         Your Workspace identity is verified again by the production server.
       </p>
       <div className="contextGrid">
         <div>
-          <span>Submitting as</span>
+          <span>Submitting As</span>
           <strong>{userEmail}</strong>
         </div>
         <div>
           <span>Access</span>
           <strong>Workspace identity verified</strong>
         </div>
-      </div>
-      <div className="callout">
-        Destinations are derived from validated answers. Folder IDs and Sheet
-        tabs can never be selected in the browser.
       </div>
     </div>
   );
@@ -357,7 +394,7 @@ function MetadataStep({
 }) {
   return (
     <div>
-      <h2>Document metadata</h2>
+      <h2>Document Metadata</h2>
       <p className="muted">Fields marked * are required.</p>
       <div className="grid">
         {metadataFields.map((field) => (
@@ -428,7 +465,7 @@ function VettingStep({
 }) {
   return (
     <div>
-      <h2>Vetting questions</h2>
+      <h2>Vetting Questions</h2>
       <p className="muted">
         Answers drive deterministic routing to governed destinations.
       </p>
@@ -477,7 +514,7 @@ function AttachmentStep({
 }) {
   return (
     <div>
-      <h2>Supporting attachments</h2>
+      <h2>Supporting Attachments</h2>
       <p className="muted">
         PDF, DOCX, XLSX, or TXT · up to 10 MB each · maximum 5 files.
       </p>
@@ -489,7 +526,7 @@ function AttachmentStep({
           accept=".pdf,.docx,.xlsx,.txt"
           onChange={(event) => onAdd(event.target.files)}
         />
-        <b>Choose files</b>
+        <b>Choose Files</b>
         <span>or drag them here</span>
       </label>
       {(errors.attachments || errors.attachmentsTotal) && (
@@ -501,7 +538,7 @@ function AttachmentStep({
             <span>▧</span>
             <div>
               <b>{file.name}</b>
-              <small>{(file.size / 1024).toFixed(1)} KB</small>
+              <small> · {(file.size / 1024).toFixed(1)} KB</small>
               {(errors[`attachment.${index}`] ||
                 errors[`attachment.${index}.size`]) && (
                 <small className="error">
@@ -529,7 +566,7 @@ function Review({ metadata, answers, files }: ReviewProps) {
 
   return (
     <div>
-      <h2>Review and submit</h2>
+      <h2>Review and Submit</h2>
       <p className="muted">
         Confirm these details before creating the auditable record.
       </p>
@@ -564,7 +601,7 @@ function Review({ metadata, answers, files }: ReviewProps) {
           </p>
         </div>
         <div className="routePreview">
-          <h3>Resolved route</h3>
+          <h3>Resolved Route</h3>
           <strong>{route?.routeKey ?? 'Requires review'}</strong>
           <span>
             {route?.dataSummaryTab ?? 'No approved destination found'}
@@ -573,4 +610,44 @@ function Review({ metadata, answers, files }: ReviewProps) {
       </div>
     </div>
   );
+}
+
+function toSubmissionIssue(error: unknown): SubmissionIssue {
+  if (error && typeof error === 'object') {
+    const candidate = error as {
+      code?: unknown;
+      message?: unknown;
+      submissionId?: unknown;
+    };
+    if (candidate.code || candidate.submissionId) {
+      return {
+        code: String(candidate.code || 'UNKNOWN_ERROR'),
+        message: String(
+          candidate.message || 'The submission could not be completed.',
+        ),
+        submissionId: candidate.submissionId
+          ? String(candidate.submissionId)
+          : undefined,
+      };
+    }
+  }
+
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  if (rawMessage === 'ROUTE_NOT_FOUND') {
+    return { code: 'ROUTE_NOT_FOUND', message: ROUTE_NOT_FOUND_MESSAGE };
+  }
+
+  try {
+    const parsed = JSON.parse(rawMessage) as SubmissionIssue;
+    return {
+      code: parsed.code || 'UNKNOWN_ERROR',
+      message: parsed.message || 'The submission could not be completed.',
+      submissionId: parsed.submissionId,
+    };
+  } catch {
+    return {
+      code: 'UNKNOWN_ERROR',
+      message: rawMessage || 'The submission could not be completed.',
+    };
+  }
 }

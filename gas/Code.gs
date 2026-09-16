@@ -9,7 +9,7 @@ function doGet() {
   } catch (error) {
     var denied = HtmlService.createTemplateFromFile('AccessDenied');
     denied.message = ErrorService.safeMessage(error);
-    return denied.evaluate().setTitle('Access denied');
+    return denied.evaluate().setTitle('Access Denied');
   }
 }
 
@@ -28,6 +28,8 @@ function submitContent(payload) { try { return SubmissionService.create(payload)
 function getSubmission(submissionId) { try { return SubmissionService.getAuthorized(submissionId); } catch (error) { throw ErrorService.forClient(error); } }
 /** Client-safe callable wrapper for corrections. */
 function correctSubmission(submissionId, payload) { try { return SubmissionService.correct(submissionId, payload); } catch (error) { throw ErrorService.forClient(error); } }
+/** Soft-deletes routed content while preserving its registry and audit trail. */
+function deleteSubmission(submissionId) { try { return SubmissionService.remove(submissionId); } catch (error) { throw ErrorService.forClient(error); } }
 /** Retries only failed/incomplete persistence operations. */
 function retrySubmission(submissionId, attachments) { try { return SubmissionService.retry(submissionId, attachments || []); } catch (error) { throw ErrorService.forClient(error); } }
 /** Adds a Jira issue reference; privileged roles only. */

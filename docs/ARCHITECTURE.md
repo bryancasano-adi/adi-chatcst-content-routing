@@ -40,6 +40,8 @@ Sheets and Drive cannot share a transaction. The registry is created first, then
 
 Corrections retain `submission_id`, increment `submission_version`, snapshot before/after state in audit, validate the new route before movement, and use Drive file IDs internally. The browser receives an opaque submission-file token rather than target resource IDs. Old audit/vetting history is append-only. A route-changing correction never falls back to a master folder.
 
+Deletion is authorized with the same owner-or-privileged rule as correction. It is recoverable and auditable: the routed Data Summary row is removed, active files are moved to Drive Trash, file rows are deactivated, and the registry row is retained with `DELETED`. Independent removal phases preserve `PARTIAL` when only one side succeeds so support can retry without repeating completed work.
+
 ## Storage migration seam
 
 Repositories isolate Sheets/Drive access from orchestration. A later database migration can replace repository implementations without changing validation, routing, authorization, or UI contracts.

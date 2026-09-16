@@ -8,6 +8,7 @@ describe('submission state machine', () => {
     expect(transition('COMPLETED', 'CORRECTION_IN_PROGRESS')).toBe(
       'CORRECTION_IN_PROGRESS',
     );
+    expect(transition('COMPLETED', 'DELETED')).toBe('DELETED');
   });
   it('rejects invalid transitions', () =>
     expect(() => transition('RECEIVED', 'COMPLETED')).toThrow(

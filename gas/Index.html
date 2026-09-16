@@ -27,7 +27,7 @@
         <?!= include('Logo'); ?>
         <span>
           <strong>ChatCST Content Routing</strong>
-          <small>Content intake and governance</small>
+          <small>Content Intake &amp; Governance</small>
         </span>
       </div>
       <div class="identity">
@@ -48,7 +48,7 @@
           aria-current="page"
         >
           <svg aria-hidden="true"><use href="#icon-plus"></use></svg>
-          <span>New submission</span>
+          <span>New Submission</span>
         </button>
         <button type="button" class="appNavItem" data-page="submissions">
           <svg aria-hidden="true"><use href="#icon-registry"></use></svg>
@@ -62,7 +62,7 @@
           hidden
         >
           <svg aria-hidden="true"><use href="#icon-settings"></use></svg>
-          <span>Admin console</span>
+          <span>Admin Console</span>
         </button>
       </nav>
 
@@ -71,7 +71,7 @@
           <div class="pageTitle">
             <div>
               <p class="eyebrow">CONTENT ROUTING WORKFLOW</p>
-              <h1 id="intakeTitle">Route content to ChatCST</h1>
+              <h1 id="intakeTitle">Route Content to ChatCST</h1>
               <p>
                 Provide complete metadata and supporting files. You remain
                 responsible for contextual accuracy.
@@ -83,11 +83,17 @@
           <form id="intakeForm" class="card" novalidate>
             <div id="stepPanel"></div>
             <div id="formError" class="errorBox" role="alert" hidden></div>
+            <div
+              id="submissionRecovery"
+              class="recoveryPanel"
+              role="alert"
+              hidden
+            ></div>
             <footer class="actions">
               <button type="button" id="back">Back</button>
               <button type="button" class="primary" id="next">Continue</button>
               <button type="submit" class="primary" id="submit" hidden>
-                Submit content
+                Submit Content
               </button>
             </footer>
           </form>
@@ -129,7 +135,7 @@
           <div class="pageTitle">
             <div>
               <p class="eyebrow">OPERATIONS</p>
-              <h1>Admin console</h1>
+              <h1>Admin Console</h1>
               <p>
                 Configuration is read-only here; mutations are
                 server-authorized and audited.
@@ -138,19 +144,25 @@
           </div>
           <div class="metrics" id="metrics"></div>
           <section class="card">
-            <h2>Environment and governance</h2>
-            <p class="muted">
-              ACL preview is conservative by default. Protected owner and
-              content manager access is never removed.
-            </p>
-            <div class="adminButtons">
+            <div class="adminHeader">
+              <div>
+                <h2>Environment and Governance</h2>
+                <p class="muted">
+                  Review application health, governed configuration, audit
+                  activity, and proposed access changes.
+                </p>
+              </div>
+              <span class="readOnlyBadge">Read Only</span>
+            </div>
+            <div class="adminButtons" role="tablist" aria-label="Admin Views">
               <button type="button" id="healthButton">Health</button>
               <button type="button" id="configButton">Configuration</button>
-              <button type="button" id="auditButton">Audit log</button>
-              <button type="button" id="aclButton">ACL preview</button>
-              <button type="button" id="aclSyncButton">Run ACL sync</button>
+              <button type="button" id="auditButton">Audit Log</button>
+              <button type="button" id="aclButton">ACL Preview</button>
             </div>
-            <pre id="adminOutput">Select an administrative view.</pre>
+            <div class="adminOutput" id="adminOutput">
+              Select an administrative view.
+            </div>
           </section>
         </section>
       </main>

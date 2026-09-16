@@ -13,6 +13,7 @@ export const PROCESSING_STATUSES: ProcessingStatus[] = [
   'PARTIAL',
   'REQUIRES_REVIEW',
   'CORRECTION_IN_PROGRESS',
+  'DELETED',
 ];
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   AUTH_DENIED: 'You are not authorized to use this application.',
@@ -30,6 +31,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'Metadata could not be saved. Support can retry this operation.',
   DUPLICATE_SUBMISSION: 'This request was already received.',
   ACL_SYNC_FAILED: 'Drive access reconciliation did not complete.',
+  SUBMISSION_DELETE_FAILED:
+    'The submission could not be deleted completely. Contact support with the submission reference.',
   CONFIGURATION_ERROR: 'The application configuration is incomplete.',
   UNKNOWN_ERROR:
     'An unexpected error occurred. Contact support with the submission reference.',

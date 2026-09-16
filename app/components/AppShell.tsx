@@ -30,7 +30,7 @@ export function AppShell({
           <BrandLogo className="brandLogo" />
           <span>
             <strong>ChatCST Content Routing</strong>
-            <small>Content intake and governance</small>
+            <small>Content Intake &amp; Governance</small>
           </span>
         </div>
         <div className="identity">
@@ -51,7 +51,7 @@ export function AppShell({
             aria-current={currentPage === 'intake' ? 'page' : undefined}
           >
             <NavIcon name="plus" />
-            <span>New submission</span>
+            <span>New Submission</span>
           </button>
           <button
             type="button"
@@ -70,7 +70,7 @@ export function AppShell({
               aria-current={currentPage === 'admin' ? 'page' : undefined}
             >
               <NavIcon name="settings" />
-              <span>Admin console</span>
+              <span>Admin Console</span>
             </button>
           )}
         </nav>

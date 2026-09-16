@@ -22,6 +22,47 @@ export const localSubmissionService = {
   list: () => [...submissions],
   audits: () => [...auditEvents],
 
+  delete(submissionId: string, email: string): SubmissionRecord {
+    const employee = authorize(email, employees);
+    const index = submissions.findIndex(
+      (item) => item.submissionId === submissionId,
+    );
+    if (index < 0) throw new Error('NOT_FOUND');
+
+    const previous = submissions[index];
+    if (
+      previous.submittedBy !== employee.email &&
+      !['CONTENT_MANAGER', 'ADMIN'].includes(employee.roleId)
+    ) {
+      throw new Error('AUTH_DENIED');
+    }
+    if (previous.processingStatus === 'DELETED') return previous;
+
+    const now = isoNow();
+    const deleted: SubmissionRecord = {
+      ...previous,
+      updatedAt: now,
+      updatedBy: employee.email,
+      processingStatus: 'DELETED',
+      sheetStatus: 'NOT_REQUIRED',
+      driveStatus: 'NOT_REQUIRED',
+      attachments: [],
+    };
+    submissions[index] = deleted;
+    auditEvents.push({
+      auditId: crypto.randomUUID(),
+      submissionId,
+      eventType: 'SUBMISSION_DELETED',
+      actorEmail: employee.email,
+      occurredAt: now,
+      before: previous,
+      after: deleted,
+      metadata: { recoverable: true },
+      result: 'SUCCESS',
+    });
+    return deleted;
+  },
+
   submit(input: SubmissionInput, email: string): SubmissionRecord {
     const employee = authorize(email, employees);
     const existing = submissions.find(
@@ -103,6 +144,9 @@ export const localSubmissionService = {
       !['CONTENT_MANAGER', 'ADMIN'].includes(employee.roleId)
     ) {
       throw new Error('AUTH_DENIED');
+    }
+    if (previous.processingStatus === 'DELETED') {
+      throw new Error('DELETED_SUBMISSION');
     }
 
     const next = this.submit(

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { localSubmissionService } from '../../lib/domain/localSubmissionService';
 import type { Employee, SubmissionRecord } from '../../lib/types/domain';
 
@@ -7,6 +8,7 @@ interface SubmissionsPageProps {
 }
 
 export function SubmissionsPage({ currentUser, onEdit }: SubmissionsPageProps) {
+  const [, setRegistryVersion] = useState(0);
   const isPrivileged = ['ADMIN', 'CONTENT_MANAGER'].includes(
     currentUser.roleId,
   );
@@ -15,6 +17,15 @@ export function SubmissionsPage({ currentUser, onEdit }: SubmissionsPageProps) {
     .filter(
       (record) => isPrivileged || record.submittedBy === currentUser.email,
     );
+
+  function deleteSubmission(record: SubmissionRecord) {
+    const confirmed = window.confirm(
+      `Delete ${record.submissionId}? Routed data will be removed and files will be moved to Trash. The audit record will be retained.`,
+    );
+    if (!confirmed) return;
+    localSubmissionService.delete(record.submissionId, currentUser.email);
+    setRegistryVersion((version) => version + 1);
+  }
 
   return (
     <>
@@ -57,9 +68,22 @@ export function SubmissionsPage({ currentUser, onEdit }: SubmissionsPageProps) {
                 </td>
                 <td>{new Date(record.updatedAt).toLocaleDateString()}</td>
                 <td>
-                  <button type="button" onClick={() => onEdit(record)}>
-                    Correct
-                  </button>
+                  {record.processingStatus === 'DELETED' ? (
+                    <span className="muted">No Actions</span>
+                  ) : (
+                    <div className="rowActions">
+                      <button type="button" onClick={() => onEdit(record)}>
+                        Update
+                      </button>
+                      <button
+                        type="button"
+                        className="dangerButton"
+                        onClick={() => deleteSubmission(record)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

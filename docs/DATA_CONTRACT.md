@@ -21,4 +21,6 @@ Data Summary tabs contain `submission_id,submission_version,updated_at,updated_b
 
 Processing states: `RECEIVED`, `VALIDATING`, `VALIDATED`, `ROUTING`, `PROCESSING`, `FILES_SAVED`, `DATA_SAVED`, `COMPLETED`, `FAILED`, `PARTIAL`, `REQUIRES_REVIEW`, `CORRECTION_IN_PROGRESS`.
 
-Error codes are stable: `AUTH_DENIED`, `VALIDATION_FAILED`, `FILE_VALIDATION_FAILED`, `ROUTE_NOT_FOUND`, `TARGET_SHEET_UNAVAILABLE`, `TARGET_TAB_UNAVAILABLE`, `DRIVE_FOLDER_UNAVAILABLE`, `DRIVE_UPLOAD_FAILED`, `SHEET_WRITE_FAILED`, `DUPLICATE_SUBMISSION`, `ACL_SYNC_FAILED`, `CONFIGURATION_ERROR`, `UNKNOWN_ERROR`.
+Error codes are stable: `AUTH_DENIED`, `VALIDATION_FAILED`, `FILE_VALIDATION_FAILED`, `ROUTE_NOT_FOUND`, `TARGET_SHEET_UNAVAILABLE`, `TARGET_TAB_UNAVAILABLE`, `DRIVE_FOLDER_UNAVAILABLE`, `DRIVE_UPLOAD_FAILED`, `SHEET_WRITE_FAILED`, `DUPLICATE_SUBMISSION`, `ACL_SYNC_FAILED`, `SUBMISSION_DELETE_FAILED`, `CONFIGURATION_ERROR`, `UNKNOWN_ERROR`.
+
+`DELETED` is a terminal submission status. Deletion removes the routed Data Summary row, moves active Drive files to Trash, marks file rows inactive, and retains the Submission Registry and Audit Log records. A partially completed deletion remains `PARTIAL` and can be retried safely because completed removal steps are skipped.

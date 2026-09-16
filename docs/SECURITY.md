@@ -8,4 +8,6 @@ Secrets belong in Script Properties or GitHub environment secrets, never Sheets/
 
 The deployment owner needs only access required to open configured resources, create/move submitted files, write governed Sheets, and manage folder ACLs if sync is enabled. Ordinary employees generally receive viewer access only where the approved matrix requires it. Protected identities cannot be removed; destructive ACL removal defaults off.
 
+Submission deletion is server-authorized for the original submitter or a privileged role. The browser supplies only the stable submission ID. Files are moved to Drive Trash rather than permanently erased, while registry and audit records remain available for traceability.
+
 Review OAuth scopes, owner access, protected emails, route allowed roles, and GitHub environment approvals before release. Retain audit logs according to company policy and restrict direct edits to control resources.
