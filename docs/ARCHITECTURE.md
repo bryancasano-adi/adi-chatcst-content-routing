@@ -23,6 +23,17 @@ ACL reconciliation is separate: `RoleAssignments → FolderAccessMatrix → Acce
 
 The browser supplies metadata, answers, and file bytes. It never supplies actor identity, role, route, spreadsheet, tab, folder, permission, or audit outcome. Every callable workflow authorizes on the server. Client validation improves UX; server validation decides acceptance.
 
+## UI parity contract
+
+The repository intentionally keeps two UI implementations: React for local iteration and native HTML/CSS/JavaScript for Apps Script production. They share one product contract rather than one runtime bundle:
+
+- the same top bar, primary navigation, page hierarchy, workflow steps, field labels, validation messages, status treatments, and responsive breakpoints;
+- the same simple-modern design tokens, including the ChatCST red brand color and standalone lightbulb logo;
+- the same user-visible intake progression and correction/success states;
+- production-only controls may appear in GAS when they require live Workspace services, but they use the same components and visual language.
+
+`tests/integration/gasProject.test.ts` protects the shared class, copy, and token contract. A UI change is incomplete until both `app/` and `gas/` are updated and the React interaction tests plus GAS contract tests pass.
+
 ## Consistency model
 
 Sheets and Drive cannot share a transaction. The registry is created first, then independent `sheet_status` and `drive_status` values record progress. A successful half produces `PARTIAL`; privileged retry skips work already marked `SAVED`. Idempotency tokens are checked inside a script lock so duplicate clicks return the original logical submission.

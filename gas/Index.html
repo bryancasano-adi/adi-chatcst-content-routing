@@ -1,10 +1,165 @@
 <!doctype html>
-<html>
-<head><base target="_top"><meta name="viewport" content="width=device-width,initial-scale=1"><?!= include('Stylesheet'); ?></head>
-<body>
-<header><div class="brand"><?!= include('Logo'); ?><strong>ChatCST Content Routing</strong></div><div class="user"><span id="userName"></span><small id="roles"></small></div></header>
-<div class="layout"><nav><button data-page="intake" class="active">＋ New submission</button><button data-page="submissions">▤ Submissions</button><button data-page="admin" id="adminNav" hidden>⚙ Admin console</button></nav><main>
-<section id="intakePage"><div class="title"><p>CONTENT ROUTING WORKFLOW</p><h1>Route content to ChatCST</h1><span>Provide metadata, vetting answers, and supporting files.</span></div><div class="steps" id="steps"></div><form id="intakeForm" class="card" novalidate><div id="stepPanel"></div><div id="formError" class="errorBox" hidden></div><footer><button type="button" id="back">Back</button><button type="button" class="primary" id="next">Continue</button><button type="submit" class="primary" id="submit" hidden>Submit content</button></footer></form><div id="success" class="card success" hidden></div></section>
-<section id="submissionsPage" hidden><div class="title"><p>REGISTRY</p><h1>Submissions</h1><span>Trace status, route, and support reference.</span></div><div class="card tableWrap"><table><thead><tr><th>Reference</th><th>Document</th><th>Route</th><th>Version</th><th>Status</th><th>Updated</th></tr></thead><tbody id="submissionRows"></tbody></table></div></section>
-<section id="adminPage" hidden><div class="title"><p>OPERATIONS</p><h1>Admin console</h1><span>Health, ACL, audit, and governed configuration.</span></div><div class="metrics" id="metrics"></div><div class="card"><div class="adminActions"><button id="healthButton">Validate environment</button><button id="configButton">Configuration</button><button id="auditButton">Audit log</button><button id="aclButton">Preview ACL changes</button><button id="aclSyncButton">Run ACL sync</button></div><pre id="adminOutput">Choose an administrative check.</pre></div></section>
-</main></div><script>window.APP_BOOTSTRAP=<?!= bootstrap ?>;window.APP_USER=<?!= user ?>;</script><?!= include('JavaScript'); ?></body></html>
+<html lang="en">
+  <head>
+    <base target="_top" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <?!= include('Stylesheet'); ?>
+  </head>
+  <body>
+    <svg class="iconSprite" aria-hidden="true">
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"></path>
+      </symbol>
+      <symbol id="icon-registry" viewBox="0 0 24 24">
+        <path d="M6 4h12a2 2 0 0 1 2 2v14H4V6a2 2 0 0 1 2-2Z"></path>
+        <path d="M8 9h8M8 13h8M8 17h5"></path>
+      </symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path
+          d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.65 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.5 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.36.71.65.99.29.28.67.42 1.07.42H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"
+        ></path>
+      </symbol>
+    </svg>
+
+    <header class="topbar">
+      <div class="brand">
+        <?!= include('Logo'); ?>
+        <span>
+          <strong>ChatCST Content Routing</strong>
+          <small>Content intake and governance</small>
+        </span>
+      </div>
+      <div class="identity">
+        <span>
+          <strong id="userName"></strong>
+          <small id="userEmail"></small>
+        </span>
+        <span class="role" id="roles"></span>
+      </div>
+    </header>
+
+    <div class="appLayout">
+      <nav class="appNav" aria-label="Primary navigation">
+        <button
+          type="button"
+          class="appNavItem active"
+          data-page="intake"
+          aria-current="page"
+        >
+          <svg aria-hidden="true"><use href="#icon-plus"></use></svg>
+          <span>New submission</span>
+        </button>
+        <button type="button" class="appNavItem" data-page="submissions">
+          <svg aria-hidden="true"><use href="#icon-registry"></use></svg>
+          <span>Submissions</span>
+        </button>
+        <button
+          type="button"
+          class="appNavItem"
+          data-page="admin"
+          id="adminNav"
+          hidden
+        >
+          <svg aria-hidden="true"><use href="#icon-settings"></use></svg>
+          <span>Admin console</span>
+        </button>
+      </nav>
+
+      <main class="contentShell">
+        <section id="intakePage">
+          <div class="pageTitle">
+            <div>
+              <p class="eyebrow">CONTENT ROUTING WORKFLOW</p>
+              <h1 id="intakeTitle">Route content to ChatCST</h1>
+              <p>
+                Provide complete metadata and supporting files. You remain
+                responsible for contextual accuracy.
+              </p>
+            </div>
+            <span class="draft" id="intakeBadge">Draft</span>
+          </div>
+          <div class="stepper" id="steps" aria-label="Submission progress"></div>
+          <form id="intakeForm" class="card" novalidate>
+            <div id="stepPanel"></div>
+            <div id="formError" class="errorBox" role="alert" hidden></div>
+            <footer class="actions">
+              <button type="button" id="back">Back</button>
+              <button type="button" class="primary" id="next">Continue</button>
+              <button type="submit" class="primary" id="submit" hidden>
+                Submit content
+              </button>
+            </footer>
+          </form>
+          <div id="success" class="success" aria-live="polite" hidden></div>
+        </section>
+
+        <section id="submissionsPage" hidden>
+          <div class="pageTitle">
+            <div>
+              <p class="eyebrow">SUBMISSION REGISTRY</p>
+              <h1>Submissions</h1>
+              <p>
+                Trace processing, destination, version, and support references.
+              </p>
+            </div>
+          </div>
+          <section class="card tableCard">
+            <table>
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Document</th>
+                  <th>Route</th>
+                  <th>Version</th>
+                  <th>Status</th>
+                  <th>Updated</th>
+                  <th aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody id="submissionRows"></tbody>
+            </table>
+            <div class="empty" id="submissionEmpty" hidden>
+              No submissions for this user.
+            </div>
+          </section>
+        </section>
+
+        <section id="adminPage" hidden>
+          <div class="pageTitle">
+            <div>
+              <p class="eyebrow">OPERATIONS</p>
+              <h1>Admin console</h1>
+              <p>
+                Configuration is read-only here; mutations are
+                server-authorized and audited.
+              </p>
+            </div>
+          </div>
+          <div class="metrics" id="metrics"></div>
+          <section class="card">
+            <h2>Environment and governance</h2>
+            <p class="muted">
+              ACL preview is conservative by default. Protected owner and
+              content manager access is never removed.
+            </p>
+            <div class="adminButtons">
+              <button type="button" id="healthButton">Health</button>
+              <button type="button" id="configButton">Configuration</button>
+              <button type="button" id="auditButton">Audit log</button>
+              <button type="button" id="aclButton">ACL preview</button>
+              <button type="button" id="aclSyncButton">Run ACL sync</button>
+            </div>
+            <pre id="adminOutput">Select an administrative view.</pre>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      window.APP_BOOTSTRAP = <?!= bootstrap ?>;
+      window.APP_USER = <?!= user ?>;
+    </script>
+    <?!= include('JavaScript'); ?>
+  </body>
+</html>

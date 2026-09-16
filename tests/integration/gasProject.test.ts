@@ -98,4 +98,66 @@ describe('Apps Script project contract', () => {
     expect(acl).toContain('Session.getEffectiveUser().getEmail()');
     expect(acl).toContain("['ADMIN','CONTENT_MANAGER']");
   });
+
+  it('keeps the React and Apps Script surfaces on the same UI contract', async () => {
+    const reactShell = await readFile(
+      new URL('app/components/AppShell.tsx', root),
+      'utf8',
+    );
+    const reactIntake = await readFile(
+      new URL('app/components/IntakePage.tsx', root),
+      'utf8',
+    );
+    const reactStepper = await readFile(
+      new URL('app/components/StepIndicator.tsx', root),
+      'utf8',
+    );
+    const reactStyles = await readFile(new URL('app/styles.css', root), 'utf8');
+    const gasIndex = await readFile(new URL('gas/Index.html', root), 'utf8');
+    const gasClient = await readFile(
+      new URL('gas/JavaScript.html', root),
+      'utf8',
+    );
+    const gasStyles = await readFile(
+      new URL('gas/Stylesheet.html', root),
+      'utf8',
+    );
+
+    const sharedClasses = [
+      'topbar',
+      'appLayout',
+      'appNav',
+      'appNavItem',
+      'contentShell',
+      'pageTitle',
+      'stepper',
+      'card',
+      'actions',
+    ];
+    sharedClasses.forEach((className) => {
+      expect(`${reactShell}\n${reactIntake}\n${reactStepper}`).toContain(
+        className,
+      );
+      expect(`${gasIndex}\n${gasClient}`).toContain(className);
+      expect(reactStyles).toContain(`.${className}`);
+      expect(gasStyles).toContain(`.${className}`);
+    });
+
+    const sharedCopy = [
+      'Content intake and governance',
+      'Route content to ChatCST',
+      'Submission context',
+      'Document metadata',
+      'Vetting questions',
+      'Supporting attachments',
+      'Review and submit',
+    ];
+    sharedCopy.forEach((text) => {
+      expect(`${reactShell}\n${reactIntake}`).toContain(text);
+      expect(`${gasIndex}\n${gasClient}`).toContain(text);
+    });
+
+    expect(reactStyles).toContain('--brand: #a43b31');
+    expect(gasStyles).toContain('--brand: #a43b31');
+  });
 });

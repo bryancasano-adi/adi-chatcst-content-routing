@@ -1,17 +1,692 @@
 <script>
-(function(){'use strict';var config=window.APP_BOOTSTRAP,user=window.APP_USER,step=1,state={metadata:{},answers:{},attachments:[],existingFiles:[],removeFileIds:[],editingId:''};var labels=['Context','Metadata','Vetting','Attachments','Review'];
-function el(id){return document.getElementById(id)}function esc(v){var d=document.createElement('div');d.textContent=String(v==null?'':v);return d.innerHTML}function run(name,args){return new Promise(function(resolve,reject){var runner=google.script.run.withSuccessHandler(resolve).withFailureHandler(function(e){try{reject(JSON.parse(e.message));}catch(x){reject({message:e.message||'Request failed'});}});runner[name].apply(runner,args||[]);});}
-el('userName').textContent=user.name+' · '+user.email;el('roles').textContent=user.roles.join(', ');el('adminNav').hidden=!user.privileged;
-document.querySelectorAll('nav button').forEach(function(button){button.onclick=function(){document.querySelectorAll('nav button').forEach(function(b){b.classList.remove('active');});button.classList.add('active');['intake','submissions','admin'].forEach(function(p){el(p+'Page').hidden=p!==button.dataset.page;});if(button.dataset.page==='submissions')loadSubmissions();if(button.dataset.page==='admin')loadAdmin();};});
-function renderSteps(){el('steps').innerHTML=labels.map(function(label,i){return '<button type="button" class="'+(step===i+1?'active':step>i+1?'done':'')+'"><b>'+(step>i+1?'✓':i+1)+'</b><span>'+label+'</span></button>';}).join('');}
-function input(field,prefix){var value=(state[prefix]||{})[field.key]||'';var control=field.options&&field.options.length?'<select data-prefix="'+prefix+'" data-key="'+field.key+'"><option value="">Select…</option>'+field.options.map(function(o){return '<option '+(o===value?'selected':'')+'>'+esc(o)+'</option>';}).join('')+'</select>':field.type==='textarea'?'<textarea data-prefix="'+prefix+'" data-key="'+field.key+'">'+esc(value)+'</textarea>':'<input data-prefix="'+prefix+'" data-key="'+field.key+'" type="'+(field.type==='date'?'date':'text')+'" value="'+esc(value)+'">';return '<label class="field"><span>'+esc(field.label)+(field.required?' *':'')+'</span>'+control+'</label>';}
-function render(){renderSteps();var html='';if(step===1)html='<h2>'+(state.editingId?'Correction for '+esc(state.editingId):'Submission context')+'</h2><p class="muted">Identity and authorization are repeated on every server operation.</p><div class="context"><div><span>Submitting as</span><b>'+esc(user.email)+'</b></div><div><span>Access</span><b>Workspace identity verified</b></div></div><div class="callout">Routes and destinations are determined on the server. The browser never supplies a folder ID or Sheet tab.</div>';if(step===2)html='<h2>Document metadata</h2><p class="muted">All required fields are validated again by the server.</p><div class="grid">'+config.metadataFields.map(function(f){return input(f,'metadata');}).join('')+'</div>';if(step===3){var qs=config.vettingQuestions.filter(function(q){return !q.showWhen||state.answers[q.showWhen.key]===q.showWhen.equals;});html='<h2>Vetting questions</h2><p class="muted">These configured answers drive deterministic routing.</p><div class="questions">'+qs.map(function(q){return input(q,'answers');}).join('')+'</div>';}if(step===4)html='<h2>Supporting attachments</h2><p class="muted">PDF, DOCX, XLSX, TXT · maximum '+config.filePolicy.maxFileCount+' files.</p><label class="drop"><input id="fileInput" type="file" multiple accept=".pdf,.docx,.xlsx,.txt"><b>Choose files</b></label><div class="files">'+state.existingFiles.filter(function(f){return state.removeFileIds.indexOf(String(f.file_token))<0;}).map(function(f){return '<div><span>'+esc(f.original_filename)+' · existing</span><button type="button" data-existing="'+esc(f.file_token)+'">Remove</button></div>';}).join('')+state.attachments.map(function(f,i){return '<div><span>'+esc(f.name)+' · '+Math.ceil(f.size/1024)+' KB</span><button type="button" data-remove="'+i+'">Remove</button></div>';}).join('')+'</div>';if(step===5)html='<h2>Review and submit</h2><p class="muted">Confirm the data before creating an auditable record.</p><div class="review"><div><h3>Metadata</h3>'+config.metadataFields.filter(function(f){return state.metadata[f.key];}).map(function(f){return '<p><span>'+esc(f.label)+'</span><b>'+esc(state.metadata[f.key])+'</b></p>';}).join('')+'</div><div><h3>Vetting</h3>'+config.vettingQuestions.filter(function(q){return state.answers[q.key];}).map(function(q){return '<p><span>'+esc(q.label)+'</span><b>'+esc(state.answers[q.key])+'</b></p>';}).join('')+'</div><div><h3>Attachments</h3><b>'+(state.attachments.length+state.existingFiles.length-state.removeFileIds.length)+' active file(s)</b></div></div>';el('stepPanel').innerHTML=html;el('back').disabled=step===1;el('next').hidden=step===5;el('submit').hidden=step!==5;el('submit').textContent=state.editingId?'Submit correction':'Submit content';document.querySelectorAll('[data-prefix]').forEach(function(node){node.onchange=function(){state[node.dataset.prefix][node.dataset.key]=node.value;};});if(step===4){el('fileInput').onchange=readFiles;document.querySelectorAll('[data-remove]').forEach(function(b){b.onclick=function(){state.attachments.splice(Number(b.dataset.remove),1);render();};});document.querySelectorAll('[data-existing]').forEach(function(b){b.onclick=function(){state.removeFileIds.push(String(b.dataset.existing));render();};});}}
-function validateCurrent(){var missing=[];if(step===2)config.metadataFields.forEach(function(f){if(f.required&&!String(state.metadata[f.key]||'').trim())missing.push(f.label);});if(step===3)config.vettingQuestions.forEach(function(q){var visible=!q.showWhen||state.answers[q.showWhen.key]===q.showWhen.equals;if(visible&&q.required&&!String(state.answers[q.key]||'').trim())missing.push(q.label);});if(missing.length){showError('Complete required fields: '+missing.join(', '));return false;}showError('');return true;}
-function showError(message){el('formError').hidden=!message;el('formError').textContent=message||'';}el('next').onclick=function(){if(validateCurrent()){step++;render();}};el('back').onclick=function(){step--;showError('');render();};
-function readFiles(event){var list=Array.from(event.target.files||[]);Promise.all(list.map(function(file){return new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve({name:file.name,type:file.type,size:file.size,dataBase64:String(reader.result).split(',')[1]});};reader.onerror=reject;reader.readAsDataURL(file);});})).then(function(files){state.attachments=state.attachments.concat(files);render();}).catch(function(){showError('A selected file could not be read.');});}
-el('intakeForm').onsubmit=async function(event){event.preventDefault();var button=el('submit');button.disabled=true;button.textContent='Submitting…';showError('');try{var payload={idempotencyToken:(crypto.randomUUID?crypto.randomUUID():String(Date.now())),submissionType:state.editingId?'CORRECTION':state.answers.change_type==='Correction'?'CORRECTION':'NEW',metadata:state.metadata,answers:state.answers,attachments:state.attachments,removeFileIds:state.removeFileIds};var result=state.editingId?await run('correctSubmission',[state.editingId,payload]):await run('submitContent',[payload]);el('intakeForm').hidden=true;el('success').hidden=false;el('success').innerHTML='<h2>'+(state.editingId?'Correction':'Submission')+' complete</h2><p>Your reference is</p><p class="receipt">'+esc(result.submissionId)+'</p><p>Status: <b>'+esc(result.processingStatus)+'</b> · Destination: '+esc(result.targetSheetTab)+'</p>';}catch(e){showError((e.message||'Submission failed')+(e.submissionId?' Reference: '+e.submissionId:''));}finally{button.disabled=false;button.textContent=state.editingId?'Submit correction':'Submit content';}};
-async function loadSubmissions(){el('submissionRows').innerHTML='<tr><td colspan="6">Loading…</td></tr>';try{var rows=await run('listSubmissions');el('submissionRows').innerHTML=rows.length?rows.map(function(r){return '<tr><td><b>'+esc(r.submissionId)+'</b><br><small>'+esc(r.submittedBy)+'</small></td><td>'+esc(r.documentTitle)+'</td><td>'+esc(r.routeKey||'Unresolved')+'</td><td>v'+esc(r.submissionVersion)+'</td><td><span class="status '+String(r.processingStatus).toLowerCase()+'">'+esc(r.processingStatus)+'</span></td><td>'+esc(String(r.updatedAt).slice(0,10))+'<br><button type="button" data-edit="'+esc(r.submissionId)+'">Correct</button></td></tr>';}).join(''):'<tr><td colspan="6">No submissions.</td></tr>';document.querySelectorAll('[data-edit]').forEach(function(button){button.onclick=function(){beginCorrection(button.dataset.edit);};});}catch(e){el('submissionRows').innerHTML='<tr><td colspan="6">'+esc(e.message)+'</td></tr>';}}
-async function beginCorrection(id){try{var data=await run('getSubmission',[id]);state={metadata:data.record.metadata||{},answers:{},attachments:[],existingFiles:(data.files||[]).filter(function(f){return String(f.active).toLowerCase()==='true';}),removeFileIds:[],editingId:id};(data.answers||[]).forEach(function(a){state.answers[a.question_key]=a.answer;});state.answers.change_type='Correction';step=1;document.querySelector('[data-page="intake"]').click();el('intakeForm').hidden=false;el('success').hidden=true;render();}catch(e){alert(e.message||'Unable to open correction.');}}
-async function loadAdmin(){try{var data=await run('getAdminDashboard');var c=data.counts;el('metrics').innerHTML=[['Total',c.total],['Completed',c.completed],['Failed',c.failed],['Partial',c.partial],['Review',c.requiresReview]].map(function(x){return '<div><span>'+x[0]+'</span><b>'+x[1]+'</b></div>';}).join('');}catch(e){el('adminOutput').textContent=e.message;}}function showAdminCall(buttonId,method,progress){el(buttonId).onclick=async function(){el('adminOutput').textContent=progress;try{el('adminOutput').textContent=JSON.stringify(await run(method),null,2);}catch(e){el('adminOutput').textContent=e.message;}};}showAdminCall('healthButton','validateEnvironment','Checking…');showAdminCall('configButton','getAdminConfiguration','Loading governed configuration…');showAdminCall('auditButton','listAuditEvents','Loading audit history…');showAdminCall('aclButton','previewAclChanges','Reading permissions…');el('aclSyncButton').onclick=async function(){if(!confirm('Apply the displayed ACL reconciliation? Protected identities will not be removed.'))return;el('adminOutput').textContent='Synchronizing permissions…';try{el('adminOutput').textContent=JSON.stringify(await run('syncDriveAcl'),null,2);}catch(e){el('adminOutput').textContent=e.message;}};render();
-})();
+  (function () {
+    'use strict';
+
+    var config = window.APP_BOOTSTRAP;
+    var user = window.APP_USER;
+    var step = 1;
+    var labels = ['Context', 'Metadata', 'Vetting', 'Attachments', 'Review'];
+    var state = emptyState_();
+
+    function emptyState_() {
+      return {
+        metadata: {},
+        answers: {},
+        attachments: [],
+        existingFiles: [],
+        removeFileIds: [],
+        editingId: '',
+        editingVersion: 0,
+        errors: {},
+      };
+    }
+
+    function el(id) {
+      return document.getElementById(id);
+    }
+
+    function esc(value) {
+      var node = document.createElement('div');
+      node.textContent = String(value == null ? '' : value);
+      return node.innerHTML;
+    }
+
+    function run(name, args) {
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (error) {
+            try {
+              reject(JSON.parse(error.message));
+            } catch (parseError) {
+              reject({ message: error.message || 'Request failed' });
+            }
+          });
+        runner[name].apply(runner, args || []);
+      });
+    }
+
+    el('userName').textContent = user.name;
+    el('userEmail').textContent = user.email;
+    el('roles').textContent = user.roles.join(', ');
+    el('adminNav').hidden = !user.privileged;
+
+    function showPage(page, preserveIntake) {
+      document.querySelectorAll('.appNavItem').forEach(function (button) {
+        var selected = button.dataset.page === page;
+        button.classList.toggle('active', selected);
+        if (selected) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      });
+
+      ['intake', 'submissions', 'admin'].forEach(function (name) {
+        el(name + 'Page').hidden = name !== page;
+      });
+
+      if (page === 'intake' && !preserveIntake) resetIntake();
+      if (page === 'submissions') loadSubmissions();
+      if (page === 'admin') loadAdmin();
+    }
+
+    document.querySelectorAll('.appNavItem').forEach(function (button) {
+      button.onclick = function () {
+        showPage(button.dataset.page, false);
+      };
+    });
+
+    function resetIntake() {
+      state = emptyState_();
+      step = 1;
+      el('intakeForm').hidden = false;
+      el('steps').hidden = false;
+      el('success').hidden = true;
+      showError('');
+      render();
+    }
+
+    function renderSteps() {
+      el('steps').innerHTML = labels
+        .map(function (label, index) {
+          var number = index + 1;
+          var className = step === number ? 'active' : step > number ? 'done' : '';
+          var disabled = number >= step ? ' disabled' : '';
+          return (
+            '<button type="button" data-step="' +
+            number +
+            '" class="' +
+            className +
+            '"' +
+            disabled +
+            '><b>' +
+            (step > number ? '✓' : number) +
+            '</b><span>' +
+            label +
+            '</span></button>'
+          );
+        })
+        .join('');
+
+      document.querySelectorAll('[data-step]').forEach(function (button) {
+        button.onclick = function () {
+          step = Number(button.dataset.step);
+          state.errors = {};
+          showError('');
+          render();
+        };
+      });
+    }
+
+    function input(field, prefix, displayLabel) {
+      var value = (state[prefix] || {})[field.key] || '';
+      var label = displayLabel || field.label;
+      var error = state.errors[prefix + '.' + field.key];
+      var attributes =
+        ' data-prefix="' +
+        esc(prefix) +
+        '" data-key="' +
+        esc(field.key) +
+        '"';
+      var control;
+
+      if (field.options && field.options.length) {
+        control =
+          '<select' +
+          attributes +
+          '><option value="">Select…</option>' +
+          field.options
+            .map(function (option) {
+              return (
+                '<option value="' +
+                esc(option) +
+                '" ' +
+                (option === value ? 'selected' : '') +
+                '>' +
+                esc(option) +
+                '</option>'
+              );
+            })
+            .join('') +
+          '</select>';
+      } else if (field.type === 'textarea') {
+        control = '<textarea' + attributes + '>' + esc(value) + '</textarea>';
+      } else {
+        control =
+          '<input' +
+          attributes +
+          ' type="' +
+          (field.type === 'date' ? 'date' : 'text') +
+          '" value="' +
+          esc(value) +
+          '">';
+      }
+
+      return (
+        '<label class="field"><span>' +
+        esc(label) +
+        (field.required ? ' *' : '') +
+        '</span>' +
+        control +
+        (field.helpText ? '<small>' + esc(field.helpText) + '</small>' : '') +
+        (error ? '<small class="error">' + esc(error) + '</small>' : '') +
+        '</label>'
+      );
+    }
+
+    function visibleQuestions_() {
+      return config.vettingQuestions.filter(function (question) {
+        return (
+          !question.showWhen ||
+          state.answers[question.showWhen.key] === question.showWhen.equals
+        );
+      });
+    }
+
+    function activeFileCount_() {
+      return (
+        state.attachments.length +
+        state.existingFiles.length -
+        state.removeFileIds.length
+      );
+    }
+
+    function render() {
+      renderSteps();
+      el('intakeTitle').textContent = state.editingId
+        ? 'Correct ' + state.editingId
+        : 'Route content to ChatCST';
+      el('intakeBadge').textContent = state.editingId
+        ? 'Version ' + (state.editingVersion + 1)
+        : 'Draft';
+
+      var html = '';
+      if (step === 1) {
+        html =
+          '<h2>Submission context</h2>' +
+          '<p class="muted">Your Workspace identity is verified again by the production server.</p>' +
+          '<div class="contextGrid"><div><span>Submitting as</span><strong>' +
+          esc(user.email) +
+          '</strong></div><div><span>Access</span><strong>Workspace identity verified</strong></div></div>' +
+          '<div class="callout">Destinations are derived from validated answers. Folder IDs and Sheet tabs can never be selected in the browser.</div>';
+      }
+
+      if (step === 2) {
+        html =
+          '<h2>Document metadata</h2>' +
+          '<p class="muted">Fields marked * are required.</p>' +
+          '<div class="grid">' +
+          config.metadataFields
+            .map(function (field) {
+              return input(field, 'metadata');
+            })
+            .join('') +
+          '</div>';
+      }
+
+      if (step === 3) {
+        html =
+          '<h2>Vetting questions</h2>' +
+          '<p class="muted">Answers drive deterministic routing to governed destinations.</p>' +
+          '<div class="questions">' +
+          visibleQuestions_()
+            .map(function (question) {
+              return input(
+                question,
+                'answers',
+                question.displayOrder + '. ' + question.label,
+              );
+            })
+            .join('') +
+          '</div>';
+      }
+
+      if (step === 4) {
+        var existingFiles = state.existingFiles
+          .filter(function (file) {
+            return state.removeFileIds.indexOf(String(file.file_token)) < 0;
+          })
+          .map(function (file) {
+            return (
+              '<div><span><b>' +
+              esc(file.original_filename) +
+              '</b><small>Existing attachment</small></span><button type="button" data-existing="' +
+              esc(file.file_token) +
+              '">Remove</button></div>'
+            );
+          })
+          .join('');
+        var newFiles = state.attachments
+          .map(function (file, index) {
+            return (
+              '<div><span><b>' +
+              esc(file.name) +
+              '</b><small>' +
+              (file.size / 1024).toFixed(1) +
+              ' KB</small></span><button type="button" data-remove="' +
+              index +
+              '">Remove</button></div>'
+            );
+          })
+          .join('');
+        html =
+          '<h2>Supporting attachments</h2>' +
+          '<p class="muted">' +
+          esc(config.filePolicy.allowedExtensions.map(function (extension) { return extension.toUpperCase(); }).join(', ')) +
+          ' · up to ' +
+          Math.round(config.filePolicy.maxFileSizeBytes / 1024 / 1024) +
+          ' MB each · maximum ' +
+          config.filePolicy.maxFileCount +
+          ' files.</p>' +
+          '<label class="dropzone"><input id="fileInput" type="file" multiple accept=".' +
+          config.filePolicy.allowedExtensions.join(',.') +
+          '"><b>Choose files</b><span>or drag them here</span></label>' +
+          (state.errors.attachments
+            ? '<p class="error">' + esc(state.errors.attachments) + '</p>'
+            : '') +
+          '<div class="fileList">' +
+          existingFiles +
+          newFiles +
+          '</div>';
+      }
+
+      if (step === 5) {
+        html =
+          '<h2>Review and submit</h2>' +
+          '<p class="muted">Confirm these details before creating the auditable record.</p>' +
+          '<div class="review"><div><h3>Metadata</h3>' +
+          config.metadataFields
+            .filter(function (field) {
+              return state.metadata[field.key];
+            })
+            .map(function (field) {
+              return (
+                '<p><span>' +
+                esc(field.label) +
+                '</span><b>' +
+                esc(state.metadata[field.key]) +
+                '</b></p>'
+              );
+            })
+            .join('') +
+          '</div><div><h3>Vetting</h3>' +
+          config.vettingQuestions
+            .filter(function (question) {
+              return state.answers[question.key];
+            })
+            .map(function (question) {
+              return (
+                '<p><span>' +
+                esc(question.label) +
+                '</span><b>' +
+                esc(state.answers[question.key]) +
+                '</b></p>'
+              );
+            })
+            .join('') +
+          '</div><div><h3>Attachments</h3><p><span>Files</span><b>' +
+          (activeFileCount_() || 'None') +
+          '</b></p></div><div class="routePreview"><h3>Resolved route</h3><strong>Resolved on submission</strong><span>The server applies the active governed route.</span></div></div>';
+      }
+
+      el('stepPanel').innerHTML = html;
+      el('back').disabled = step === 1;
+      el('next').hidden = step === 5;
+      el('submit').hidden = step !== 5;
+      el('submit').textContent = state.editingId
+        ? 'Submit correction'
+        : 'Submit content';
+
+      document.querySelectorAll('[data-prefix]').forEach(function (node) {
+        node.oninput = node.onchange = function () {
+          state[node.dataset.prefix][node.dataset.key] = node.value;
+          delete state.errors[node.dataset.prefix + '.' + node.dataset.key];
+          showError('');
+        };
+      });
+
+      if (step === 4) {
+        el('fileInput').onchange = readFiles;
+        document.querySelectorAll('[data-remove]').forEach(function (button) {
+          button.onclick = function () {
+            state.attachments.splice(Number(button.dataset.remove), 1);
+            validateFiles_();
+            render();
+          };
+        });
+        document.querySelectorAll('[data-existing]').forEach(function (button) {
+          button.onclick = function () {
+            state.removeFileIds.push(String(button.dataset.existing));
+            render();
+          };
+        });
+      }
+    }
+
+    function validateFiles_() {
+      var policy = config.filePolicy;
+      var existingTotal = state.existingFiles
+        .filter(function (file) {
+          return state.removeFileIds.indexOf(String(file.file_token)) < 0;
+        })
+        .reduce(function (sum, file) {
+          return sum + Number(file.size_bytes || 0);
+        }, 0);
+      var total = state.attachments.reduce(function (sum, file) {
+        return sum + file.size;
+      }, existingTotal);
+      var invalid = state.attachments.find(function (file) {
+        var extension = String(file.name).split('.').pop().toLowerCase();
+        return (
+          policy.allowedExtensions.indexOf(extension) < 0 ||
+          file.size > policy.maxFileSizeBytes
+        );
+      });
+      var message = '';
+      if (activeFileCount_() > policy.maxFileCount) {
+        message = 'Attach no more than ' + policy.maxFileCount + ' files.';
+      } else if (total > policy.maxTotalSizeBytes) {
+        message = 'The selected files exceed the total upload limit.';
+      } else if (invalid) {
+        message = invalid.name + ' is not an allowed file or exceeds the size limit.';
+      }
+
+      if (message) state.errors.attachments = message;
+      else delete state.errors.attachments;
+      return !message;
+    }
+
+    function validateCurrent() {
+      state.errors = {};
+      var missing = [];
+      var fields = [];
+      var prefix = '';
+
+      if (step === 2) {
+        fields = config.metadataFields;
+        prefix = 'metadata';
+      } else if (step === 3) {
+        fields = visibleQuestions_();
+        prefix = 'answers';
+      }
+
+      fields.forEach(function (field) {
+        if (field.required && !String(state[prefix][field.key] || '').trim()) {
+          state.errors[prefix + '.' + field.key] = field.label + ' is required.';
+          missing.push(field.label);
+        }
+      });
+
+      if (step === 4 && !validateFiles_()) {
+        showError('Correct the attachment issues before continuing.');
+        render();
+        return false;
+      }
+
+      if (missing.length) {
+        showError(
+          step === 2
+            ? 'Complete the required metadata before continuing.'
+            : 'Answer the required vetting questions before continuing.',
+        );
+        render();
+        return false;
+      }
+
+      showError('');
+      return true;
+    }
+
+    function showError(message) {
+      el('formError').hidden = !message;
+      el('formError').textContent = message || '';
+    }
+
+    el('next').onclick = function () {
+      if (!validateCurrent()) return;
+      step = Math.min(labels.length, step + 1);
+      render();
+    };
+
+    el('back').onclick = function () {
+      step = Math.max(1, step - 1);
+      state.errors = {};
+      showError('');
+      render();
+    };
+
+    function readFiles(event) {
+      var list = Array.from(event.target.files || []);
+      Promise.all(
+        list.map(function (file) {
+          return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () {
+              resolve({
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                dataBase64: String(reader.result).split(',')[1],
+              });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }),
+      )
+        .then(function (files) {
+          state.attachments = state.attachments.concat(files);
+          validateFiles_();
+          render();
+        })
+        .catch(function () {
+          showError('A selected file could not be read.');
+        });
+    }
+
+    el('intakeForm').onsubmit = async function (event) {
+      event.preventDefault();
+      var button = el('submit');
+      button.disabled = true;
+      button.textContent = 'Submitting…';
+      showError('');
+
+      try {
+        var payload = {
+          idempotencyToken: crypto.randomUUID
+            ? crypto.randomUUID()
+            : String(Date.now()),
+          submissionType: state.editingId ? 'CORRECTION' : 'NEW',
+          metadata: state.metadata,
+          answers: state.answers,
+          attachments: state.attachments,
+          removeFileIds: state.removeFileIds,
+        };
+        var result = state.editingId
+          ? await run('correctSubmission', [state.editingId, payload])
+          : await run('submitContent', [payload]);
+
+        el('intakeForm').hidden = true;
+        el('steps').hidden = true;
+        el('success').hidden = false;
+        el('success').innerHTML =
+          '<div class="successIcon">✓</div><h2>' +
+          (state.editingId ? 'Correction complete' : 'Submission complete') +
+          '</h2><p>Your content was validated, routed, and recorded.</p>' +
+          '<div class="receipt"><span>Submission reference</span><strong>' +
+          esc(result.submissionId) +
+          '</strong><span>Destination</span><b>' +
+          esc(result.targetSheetTab) +
+          '</b><span>Status</span><b class="status completed">' +
+          esc(result.processingStatus) +
+          '</b></div><button type="button" class="primary" id="viewSubmissions">View submissions</button>';
+        el('viewSubmissions').onclick = function () {
+          showPage('submissions', false);
+        };
+      } catch (error) {
+        showError(
+          (error.message || 'Submission failed') +
+            (error.submissionId ? ' Reference: ' + error.submissionId : ''),
+        );
+      } finally {
+        button.disabled = false;
+        button.textContent = state.editingId
+          ? 'Submit correction'
+          : 'Submit content';
+      }
+    };
+
+    async function loadSubmissions() {
+      el('submissionEmpty').hidden = true;
+      el('submissionRows').innerHTML =
+        '<tr><td colspan="7">Loading submissions…</td></tr>';
+      try {
+        var rows = await run('listSubmissions');
+        el('submissionRows').innerHTML = rows
+          .map(function (record) {
+            return (
+              '<tr><td><b>' +
+              esc(record.submissionId) +
+              '</b><small>' +
+              esc(record.submittedBy) +
+              '</small></td><td>' +
+              esc(record.documentTitle) +
+              '</td><td>' +
+              esc(record.routeKey || 'Unresolved') +
+              '</td><td>v' +
+              esc(record.submissionVersion) +
+              '</td><td><span class="status ' +
+              String(record.processingStatus).toLowerCase() +
+              '">' +
+              esc(record.processingStatus) +
+              '</span></td><td>' +
+              esc(String(record.updatedAt).slice(0, 10)) +
+              '</td><td><button type="button" data-edit="' +
+              esc(record.submissionId) +
+              '">Correct</button></td></tr>'
+            );
+          })
+          .join('');
+        el('submissionEmpty').hidden = rows.length !== 0;
+
+        document.querySelectorAll('[data-edit]').forEach(function (button) {
+          button.onclick = function () {
+            beginCorrection(button.dataset.edit);
+          };
+        });
+      } catch (error) {
+        el('submissionRows').innerHTML =
+          '<tr><td colspan="7">' + esc(error.message) + '</td></tr>';
+      }
+    }
+
+    async function beginCorrection(id) {
+      try {
+        var data = await run('getSubmission', [id]);
+        state = {
+          metadata: data.record.metadata || {},
+          answers: {},
+          attachments: [],
+          existingFiles: (data.files || []).filter(function (file) {
+            return String(file.active).toLowerCase() === 'true';
+          }),
+          removeFileIds: [],
+          editingId: id,
+          editingVersion: Number(data.record.submission_version || 0),
+          errors: {},
+        };
+        (data.answers || []).forEach(function (answer) {
+          state.answers[answer.question_key] = answer.answer;
+        });
+        state.answers.change_type = 'Correction';
+        step = 1;
+        el('intakeForm').hidden = false;
+        el('steps').hidden = false;
+        el('success').hidden = true;
+        showPage('intake', true);
+        render();
+      } catch (error) {
+        window.alert(error.message || 'Unable to open correction.');
+      }
+    }
+
+    async function loadAdmin() {
+      try {
+        var results = await Promise.all([
+          run('getAdminDashboard'),
+          run('getAdminConfiguration'),
+        ]);
+        var counts = results[0].counts;
+        var activeRoutes = results[1].routes.filter(function (route) {
+          return String(route.active).toLowerCase() === 'true';
+        }).length;
+        var metrics = [
+          ['Total submissions', counts.total],
+          ['Completed', counts.completed],
+          [
+            'Needs attention',
+            counts.failed + counts.partial + counts.requiresReview,
+          ],
+          ['Active routes', activeRoutes],
+        ];
+        el('metrics').innerHTML = metrics
+          .map(function (metric) {
+            return (
+              '<div><span>' +
+              metric[0] +
+              '</span><b>' +
+              metric[1] +
+              '</b></div>'
+            );
+          })
+          .join('');
+      } catch (error) {
+        el('adminOutput').textContent = error.message;
+      }
+    }
+
+    function showAdminCall(buttonId, method, progress) {
+      el(buttonId).onclick = async function () {
+        el('adminOutput').textContent = progress;
+        try {
+          el('adminOutput').textContent = JSON.stringify(
+            await run(method),
+            null,
+            2,
+          );
+        } catch (error) {
+          el('adminOutput').textContent = error.message;
+        }
+      };
+    }
+
+    showAdminCall('healthButton', 'validateEnvironment', 'Checking…');
+    showAdminCall(
+      'configButton',
+      'getAdminConfiguration',
+      'Loading governed configuration…',
+    );
+    showAdminCall('auditButton', 'listAuditEvents', 'Loading audit history…');
+    showAdminCall('aclButton', 'previewAclChanges', 'Reading permissions…');
+
+    el('aclSyncButton').onclick = async function () {
+      if (
+        !window.confirm(
+          'Apply the displayed ACL reconciliation? Protected identities will not be removed.',
+        )
+      ) {
+        return;
+      }
+      el('adminOutput').textContent = 'Synchronizing permissions…';
+      try {
+        el('adminOutput').textContent = JSON.stringify(
+          await run('syncDriveAcl'),
+          null,
+          2,
+        );
+      } catch (error) {
+        el('adminOutput').textContent = error.message;
+      }
+    };
+
+    render();
+  })();
 </script>

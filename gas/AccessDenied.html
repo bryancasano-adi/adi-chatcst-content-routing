@@ -1,1 +1,91 @@
-<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial;background:#f5f7fa;color:#172033;display:grid;place-items:center;min-height:100vh;margin:0}.box{max-width:480px;background:#fff;border:1px solid #dce1e8;border-radius:12px;padding:36px;text-align:center}h1{font-size:24px}p{color:#657083;line-height:1.5}.ref{background:#f1f4f8;padding:12px;border-radius:7px}</style></head><body><main class="box"><h1>Access unavailable</h1><p><?= message ?></p><p class="ref">Sign in with your company Workspace account. If access is still denied, contact support.</p></main></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --brand: #a43b31;
+        --brand-soft: #fbf2f0;
+        --ink: #202124;
+        --muted: #69707d;
+        --line: #e1e4e8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+        background: #f7f7f8;
+        padding: 20px;
+        color: var(--ink);
+        font: 14px/1.55 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+      main {
+        width: min(100%, 480px);
+        border: 1px solid var(--line);
+        border-top: 3px solid var(--brand);
+        border-radius: 8px;
+        background: #fff;
+        padding: 32px;
+        box-shadow: 0 8px 30px rgb(23 32 51 / 7%);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 28px;
+      }
+      .brand-logo {
+        width: 34px;
+        height: 43px;
+      }
+      .brand strong,
+      .brand small {
+        display: block;
+      }
+      .brand small {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      h1 {
+        margin: 0 0 9px;
+        font-size: 24px;
+        letter-spacing: -0.025em;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .help {
+        margin-top: 22px;
+        border-left: 3px solid var(--brand);
+        background: var(--brand-soft);
+        padding: 12px 14px;
+        color: #65322d;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">
+        <?!= include('Logo'); ?>
+        <span>
+          <strong>ChatCST Content Routing</strong>
+          <small>Content intake and governance</small>
+        </span>
+      </div>
+      <h1>Access unavailable</h1>
+      <p><?= message ?></p>
+      <p class="help">
+        Sign in with your company Workspace account. If access is still denied,
+        contact support.
+      </p>
+    </main>
+  </body>
+</html>
