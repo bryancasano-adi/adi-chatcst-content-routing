@@ -31,7 +31,7 @@ The local interface starts with an empty in-memory registry and a configured emp
 3. Set `ENVIRONMENT=production` and `CONTROL_SPREADSHEET_ID` in Script Properties.
 4. Copy `.clasp.json.example` to `.clasp.json`, enter the script ID, and run `npx clasp push`.
 5. From the Apps Script editor, run `setupSheets()` once. It adds missing tabs and headers without replacing data.
-6. Populate approved employees, roles, role assignments, vetting questions, routes, ACL mappings, and settings.
+6. Populate approved employees, roles, role assignments, metadata fields, vetting questions, routes, ACL mappings, and settings.
 7. Run `validateEnvironment()` and resolve every failed check.
 8. Deploy a Workspace-restricted `/exec` web app that executes as the deployment owner.
 
@@ -66,4 +66,4 @@ docs/                architecture, contracts, security, deployment, UAT, operati
 .github/workflows/   tested clasp production deployment
 ```
 
-Detailed guidance: [architecture](docs/ARCHITECTURE.md), [data contract](docs/DATA_CONTRACT.md), [Apps Script setup](docs/GOOGLE_APPS_SCRIPT.md), [security](docs/SECURITY.md), [operations](docs/OPERATIONS_RUNBOOK.md).
+Detailed guidance: [requirements traceability](docs/REQUIREMENTS_TRACEABILITY.md), [production configuration](docs/PRODUCTION_CONFIGURATION.md), [architecture](docs/ARCHITECTURE.md), [data contract](docs/DATA_CONTRACT.md), [Apps Script setup](docs/GOOGLE_APPS_SCRIPT.md), [security](docs/SECURITY.md), and [operations](docs/OPERATIONS_RUNBOOK.md).

@@ -9,7 +9,7 @@
 
 Install clasp: `npm install --global @google/clasp@3.3.0`, then `clasp login`. Copy `.clasp.json.example` to the ignored `.clasp.json`, set the script ID, and run `clasp push`.
 
-Configure the Script Properties listed in the README. For a fresh production control Sheet, set `CONTROL_SPREADSHEET_ID`, run `setupSheets()` in the editor, then populate the allowlist and configuration. Setup requires the active user to equal the effective/deployment owner, preventing invocation by ordinary web-app users.
+Configure the Script Properties listed in the README. For a fresh production control Sheet, set `CONTROL_SPREADSHEET_ID`, run `setupSheets()` in the editor, then populate the allowlist and configuration. Rerun `setupSheets()` after releases that add a control-table tab or column; it is additive and does not replace governed rows. Setup requires the active user to equal the effective/deployment owner, preventing invocation by ordinary web-app users.
 
 ## Test deployment
 

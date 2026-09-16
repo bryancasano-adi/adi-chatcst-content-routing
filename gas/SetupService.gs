@@ -4,6 +4,7 @@ var SetupService = (function () {
     Roles: ['role_id', 'role_name', 'description', 'active', 'is_content_manager'],
     RoleAssignments: ['employee_email', 'role_id', 'active', 'effective_from', 'effective_to'],
     FolderAccessMatrix: ['role_id', 'route_key', 'folder_id', 'permission', 'active'],
+    MetadataFields: ['field_key', 'label', 'field_type', 'required', 'options_json', 'display_order', 'active', 'help_text'],
     VettingQuestions: ['question_id', 'question_key', 'label', 'question_type', 'required', 'options_json', 'display_order', 'active', 'version', 'show_when_json'],
     Routes: ['route_key', 'conditions_json', 'data_summary_spreadsheet_id', 'data_summary_tab', 'drive_folder_id', 'allowed_roles_json', 'active', 'version'],
     VettingResponses: ['response_id', 'submission_id', 'question_id', 'question_key', 'answer', 'question_version', 'created_at', 'created_by'],

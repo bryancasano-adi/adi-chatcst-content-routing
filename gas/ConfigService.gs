@@ -3,17 +3,14 @@ var ConfigService = (function () {
     ENVIRONMENT: 'production', ALLOW_ACL_REMOVAL: 'false', MAX_FILE_COUNT: '5', MAX_FILE_SIZE_BYTES: '10485760', MAX_TOTAL_SIZE_BYTES: '26214400',
     ALLOWED_MIME_TYPES: 'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain', ALLOWED_EXTENSIONS: 'pdf,docx,xlsx,txt'
   };
-  var metadata = [
-    ['document_title','Document title','text',true],['document_description','Description','textarea',true],['document_date','Document date','date',true],['business_unit','Business unit','select',true,['Finance','Operations','HR','Procurement']],['process_name','Process name','text',true],['document_owner','Document owner','text',true],['source_system','Source system','text',true],['confidentiality','Confidentiality','select',true,['Internal','Confidential','Restricted']],['effective_date','Effective date','date',true],['tags','Tags','tags',false]
-  ];
   function get(key, fallback) { return PropertiesService.getScriptProperties().getProperty(key) || defaults[key] || fallback || ''; }
   function requireValue(key) { var value = get(key); if (!value) throw ErrorService.create('CONFIGURATION_ERROR', 'Missing Script Property: ' + key); return value; }
   function jsonSetting(key, fallback) { var settings = AccessControlRepository.readTable('Settings'); var found = settings.filter(function (row) { return row.key === key; })[0]; if (!found || !found.value) return fallback; try { return JSON.parse(found.value); } catch (e) { throw ErrorService.create('CONFIGURATION_ERROR', 'Invalid JSON setting: ' + key); } }
   return {
     get: get, require: requireValue,
-    metadataFields: function () { return metadata.map(function (x) { return { key:x[0], label:x[1], type:x[2], required:x[3], options:x[4] || [] }; }); },
+    metadataFields: function () { return AccessControlRepository.readTable('MetadataFields').filter(function (row) { return String(row.active).toLowerCase() === 'true'; }).sort(function (a,b) { return Number(a.display_order)-Number(b.display_order); }).map(function (row) { var options=[];try{options=row.options_json?JSON.parse(row.options_json):[];}catch(e){throw ErrorService.create('CONFIGURATION_ERROR','Invalid metadata options for '+row.field_key);}if(!Array.isArray(options))throw ErrorService.create('CONFIGURATION_ERROR','Metadata options must be an array for '+row.field_key);return { key:String(row.field_key), label:String(row.label), type:String(row.field_type), required:String(row.required).toLowerCase()==='true', options:options, helpText:String(row.help_text||'') }; }); },
     filePolicy: function () { return { maxFileCount:Number(get('MAX_FILE_COUNT')), maxFileSizeBytes:Number(get('MAX_FILE_SIZE_BYTES')), maxTotalSizeBytes:Number(get('MAX_TOTAL_SIZE_BYTES')), allowedMimeTypes:get('ALLOWED_MIME_TYPES').split(','), allowedExtensions:get('ALLOWED_EXTENSIONS').split(',') }; },
-    protectedEmails: function () { return jsonSetting('PROTECTED_ACL_EMAILS', []).map(normalizeEmail_); }
+    protectedEmails: function () { var configured=jsonSetting('PROTECTED_ACL_EMAILS', []);if(!Array.isArray(configured))throw ErrorService.create('CONFIGURATION_ERROR','PROTECTED_ACL_EMAILS must be a JSON array');return configured.map(normalizeEmail_); }
   };
 })();
 

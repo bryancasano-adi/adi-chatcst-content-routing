@@ -5,9 +5,15 @@ on:
   push:
     branches: [main]
     paths:
+      - 'app/**'
       - 'gas/**'
       - 'lib/**'
+      - 'public/**'
       - 'tests/**'
+      - 'index.html'
+      - 'eslint.config.js'
+      - 'tsconfig*.json'
+      - 'vite.config.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/deploy-gas.yml'

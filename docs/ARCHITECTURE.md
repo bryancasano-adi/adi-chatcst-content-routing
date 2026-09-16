@@ -6,6 +6,7 @@
 Workspace user
   → GAS HTML form
   → AuthService (Workspace identity + Employees allowlist + roles)
+  → ConfigService + VettingService (versioned metadata/question configuration)
   → ValidationService (metadata, question options, dates, attachments)
   → VettingService (versioned question configuration)
   → RoutingService (exactly one enabled rule; configured IDs only)
@@ -26,7 +27,7 @@ The browser supplies metadata, answers, and file bytes. It never supplies actor 
 
 Sheets and Drive cannot share a transaction. The registry is created first, then independent `sheet_status` and `drive_status` values record progress. A successful half produces `PARTIAL`; privileged retry skips work already marked `SAVED`. Idempotency tokens are checked inside a script lock so duplicate clicks return the original logical submission.
 
-Corrections retain `submission_id`, increment `submission_version`, snapshot before/after state in audit, validate the new route before movement, and use Drive file IDs. Old audit/vetting history is append-only. A route-changing correction never falls back to the master folder.
+Corrections retain `submission_id`, increment `submission_version`, snapshot before/after state in audit, validate the new route before movement, and use Drive file IDs internally. The browser receives an opaque submission-file token rather than target resource IDs. Old audit/vetting history is append-only. A route-changing correction never falls back to a master folder.
 
 ## Storage migration seam
 

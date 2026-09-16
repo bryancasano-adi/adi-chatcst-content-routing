@@ -69,4 +69,33 @@ describe('Apps Script project contract', () => {
       expect(`${code}\n${html}`.toLowerCase()).not.toContain(mode),
     );
   });
+
+  it('keeps production configuration and response boundaries fail-closed', async () => {
+    const setup = await readFile(new URL('gas/SetupService.gs', root), 'utf8');
+    const config = await readFile(
+      new URL('gas/ConfigService.gs', root),
+      'utf8',
+    );
+    const summary = await readFile(
+      new URL('gas/DataSummaryRepository.gs', root),
+      'utf8',
+    );
+    const submissions = await readFile(
+      new URL('gas/SubmissionService.gs', root),
+      'utf8',
+    );
+    const acl = await readFile(
+      new URL('gas/AccessControlService.gs', root),
+      'utf8',
+    );
+
+    expect(setup).toContain('MetadataFields');
+    expect(config).toContain("readTable('MetadataFields')");
+    expect(summary).toContain('ConfigService.metadataFields()');
+    expect(submissions).toContain('file_token:r.submission_file_id');
+    expect(submissions).toContain('delete visibleRecord.target_sheet_id');
+    expect(submissions).toContain('delete visibleRecord.target_folder_id');
+    expect(acl).toContain('Session.getEffectiveUser().getEmail()');
+    expect(acl).toContain("['ADMIN','CONTENT_MANAGER']");
+  });
 });
